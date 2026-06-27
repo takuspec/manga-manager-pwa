@@ -835,9 +835,9 @@ textarea {
 }
 
 .series-list-card .series-cover-small {
-  width: 84px;
-  height: 112px;
-  border-radius: 10px;
+  width: 92px;
+  height: 124px;
+  border-radius: 12px;
 }
 
 .series-list-card .series-status-badge-row {
