@@ -953,10 +953,6 @@ function MagazineSeriesPage({
         {showSeriesControls && (
           <>
             <div className="sort-controls">
-              <div className="sort-control-label">
-                第1条件
-              </div>
-
               <div className="sort-row sort-row-with-button">
                 <select
                   value={sortMode}
@@ -990,10 +986,6 @@ function MagazineSeriesPage({
                     ? '昇順'
                     : '降順'}
                 </button>
-              </div>
-
-              <div className="sort-control-label">
-                第2条件
               </div>
 
               <div className="sort-row sort-row-with-button">

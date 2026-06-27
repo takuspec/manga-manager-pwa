@@ -483,13 +483,6 @@ textarea {
   margin-bottom: 16px;
 }
 
-.sort-control-label {
-  margin: 0 0 6px 2px;
-  color: #93c5fd;
-  font-size: 13px;
-  font-weight: 800;
-}
-
 .sort-controls .sort-row {
   margin-bottom: 10px;
 }
@@ -641,14 +634,14 @@ textarea {
 .series-list-card {
   position: relative;
   display: grid;
-  grid-template-columns: 92px minmax(0, 1fr) 58px;
-  gap: 14px;
+  grid-template-columns: 84px minmax(0, 1fr) 54px;
+  gap: 12px;
   align-items: center;
   background: linear-gradient(135deg, #1f2937, #111827);
   border: 1px solid #263244;
   border-radius: 20px;
-  padding: 14px;
-  margin-bottom: 16px;
+  padding: 12px;
+  margin-bottom: 12px;
   cursor: pointer;
 }
 
@@ -668,9 +661,9 @@ textarea {
 }
 
 .series-cover-small {
-  width: 92px;
-  height: 124px;
-  border-radius: 12px;
+  width: 84px;
+  height: 112px;
+  border-radius: 10px;
   overflow: hidden;
   background: #374151;
   display: flex;
@@ -685,9 +678,9 @@ textarea {
 }
 
 .series-title {
-  font-size: 18px;
+  font-size: 17px;
   font-weight: 800;
-  margin-bottom: 8px;
+  margin-bottom: 6px;
 }
 
 .series-info {
@@ -729,7 +722,7 @@ textarea {
   order: 3;
   color: #9ca3af;
   font-size: 13px;
-  margin-bottom: 6px;
+  margin-bottom: 4px;
 }
 
 .series-issue .issue-label {
@@ -748,7 +741,7 @@ textarea {
   order: 2;
   color: #9ca3af;
   font-size: 13px;
-  margin: -4px 0 10px;
+  margin: -4px 0 8px;
 }
 
 .series-start-issue .issue-label {
@@ -783,7 +776,7 @@ textarea {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
+  gap: 5px;
   flex-wrap: nowrap;
   min-width: 0;
 }
@@ -814,7 +807,7 @@ textarea {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 6px 10px;
+  padding: 5px 9px;
   border-radius: 999px;
   background: rgba(16, 185, 129, 0.18);
   color: #6ee7b7;
@@ -827,12 +820,12 @@ textarea {
 .series-step-buttons {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
 }
 
 .series-step-buttons button {
-  width: 52px;
-  height: 44px;
+  width: 50px;
+  height: 40px;
   padding: 0;
   border-radius: 12px;
   font-size: 16px;
