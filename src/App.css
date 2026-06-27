@@ -661,9 +661,9 @@ textarea {
 }
 
 .series-cover-small {
-  width: 84px;
-  height: 112px;
-  border-radius: 10px;
+  width: 92px;
+  height: 124px;
+  border-radius: 12px;
   overflow: hidden;
   background: #374151;
   display: flex;
@@ -678,9 +678,9 @@ textarea {
 }
 
 .series-title {
-  font-size: 17px;
+  font-size: 18px;
   font-weight: 800;
-  margin-bottom: 6px;
+  margin-bottom: 8px;
 }
 
 .series-info {
@@ -692,8 +692,10 @@ textarea {
 .series-list-card .series-title {
   order: 1;
   display: -webkit-box;
+  font-size: 17px;
   max-height: 2.5em;
   line-height: 1.25;
+  margin-bottom: 6px;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
   white-space: normal;
@@ -776,7 +778,7 @@ textarea {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 5px;
+  gap: 6px;
   flex-wrap: nowrap;
   min-width: 0;
 }
@@ -807,7 +809,7 @@ textarea {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 5px 9px;
+  padding: 6px 10px;
   border-radius: 999px;
   background: rgba(16, 185, 129, 0.18);
   color: #6ee7b7;
@@ -820,16 +822,39 @@ textarea {
 .series-step-buttons {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
 }
 
 .series-step-buttons button {
-  width: 50px;
-  height: 40px;
+  width: 52px;
+  height: 44px;
   padding: 0;
   border-radius: 12px;
   font-size: 16px;
   font-weight: 800;
+}
+
+.series-list-card .series-cover-small {
+  width: 84px;
+  height: 112px;
+  border-radius: 10px;
+}
+
+.series-list-card .series-status-badge-row {
+  gap: 5px;
+}
+
+.series-list-card .series-period-badge {
+  padding: 5px 9px;
+}
+
+.series-list-card .series-step-buttons {
+  gap: 8px;
+}
+
+.series-list-card .series-step-buttons button {
+  width: 50px;
+  height: 40px;
 }
 
 .series-popup-menu {
