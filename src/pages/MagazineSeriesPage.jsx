@@ -283,6 +283,13 @@ function MagazineSeriesPage({
     isHarta &&
     selectedHartaGroups.length > 0
 
+  const isFinishedSeries = (item) => {
+    return (
+      item.status === 'completed' ||
+      Number(item.completedIssue) > 0
+    )
+  }
+
   const shouldShowByUnreadZeroFilter = (item) => {
     if (showUnreadZeroOngoing) {
       return true
@@ -440,7 +447,7 @@ function MagazineSeriesPage({
 
         if (
           !showCompleted &&
-          item.status === 'completed'
+          isFinishedSeries(item)
         ) {
           return false
         }
@@ -478,15 +485,15 @@ function MagazineSeriesPage({
 
         if (secondaryResult === 0) {
           if (
-            a.status !== 'completed' &&
-            b.status === 'completed'
+            !isFinishedSeries(a) &&
+            isFinishedSeries(b)
           ) {
             return -1
           }
 
           if (
-            a.status === 'completed' &&
-            b.status !== 'completed'
+            isFinishedSeries(a) &&
+            !isFinishedSeries(b)
           ) {
             return 1
           }
@@ -626,16 +633,12 @@ function MagazineSeriesPage({
 
         if (
           !showCompleted &&
-          item.status === 'completed'
+          isFinishedSeries(item)
         ) {
           return false
         }
 
         if (!shouldShowByHartaGroup(item)) {
-          return false
-        }
-
-        if (!shouldShowByUnreadZeroFilter(item)) {
           return false
         }
 
@@ -700,7 +703,7 @@ function MagazineSeriesPage({
   const selectableDisplaySeriesIds =
     displaySeries
       .filter((item) => {
-        return item.status !== 'completed'
+        return !isFinishedSeries(item)
       })
       .map((item) => {
       return item.id
