@@ -295,7 +295,7 @@ function MagazineSeriesPage({
       return true
     }
 
-    if (isFinishedSeries(item)) {
+    if (item.status === 'completed') {
       return false
     }
 
