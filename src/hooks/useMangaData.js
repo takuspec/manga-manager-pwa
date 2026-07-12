@@ -1614,15 +1614,35 @@ function useMangaData({
   const toggleStatus = (id) => {
     setSeriesList((prevList) =>
       prevList.map((item) => {
-        return item.id === id
-          ? {
-              ...item,
-              status:
-                item.status === 'completed'
-                  ? 'ongoing'
-                  : 'completed'
-            }
-          : item
+        if (item.id !== id) {
+          return item
+        }
+
+        const nextStatus =
+          item.status === 'completed'
+            ? 'ongoing'
+            : 'completed'
+
+        const nextItem = {
+          ...item,
+          status: nextStatus
+        }
+
+        if (
+          nextStatus === 'completed' &&
+          !Number(nextItem.completedIssue)
+        ) {
+          return {
+            ...nextItem,
+            completedIssueYear:
+              nextItem.issueYear ||
+              new Date().getFullYear(),
+            completedIssue:
+              Number(nextItem.issue) || 0
+          }
+        }
+
+        return nextItem
       })
     )
   }
@@ -1633,13 +1653,33 @@ function useMangaData({
   ) => {
     setSeriesList((prevList) =>
       prevList.map((item) => {
-        return item.id === id
-          ? {
-              ...item,
-              status:
-                normalizeSeriesStatus(status)
-            }
-          : item
+        if (item.id !== id) {
+          return item
+        }
+
+        const nextStatus =
+          normalizeSeriesStatus(status)
+
+        const nextItem = {
+          ...item,
+          status: nextStatus
+        }
+
+        if (
+          nextStatus === 'completed' &&
+          !Number(nextItem.completedIssue)
+        ) {
+          return {
+            ...nextItem,
+            completedIssueYear:
+              nextItem.issueYear ||
+              new Date().getFullYear(),
+            completedIssue:
+              Number(nextItem.issue) || 0
+          }
+        }
+
+        return nextItem
       })
     )
   }

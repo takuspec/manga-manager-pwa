@@ -41,8 +41,8 @@ const viewModeLabelMap = {
 }
 
 const unreadZeroLabelMap = {
-  true: '未読0を表示',
-  false: '未読0を非表示'
+  true: '未読0を非表示',
+  false: '未読0を表示'
 }
 
 const sortOptions = [
@@ -293,6 +293,10 @@ function MagazineSeriesPage({
   const shouldShowByUnreadZeroFilter = (item) => {
     if (showUnreadZeroOngoing) {
       return true
+    }
+
+    if (isFinishedSeries(item)) {
+      return false
     }
 
     if (item.status === 'paused') {
