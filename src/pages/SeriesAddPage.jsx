@@ -5,6 +5,12 @@ function SeriesAddPage({
   magazineList,
   newSeriesTitle,
   setNewSeriesTitle,
+  newSeriesAuthor,
+  setNewSeriesAuthor,
+  newSeriesStoryAuthor,
+  setNewSeriesStoryAuthor,
+  newSeriesArtAuthor,
+  setNewSeriesArtAuthor,
   newSeriesHartaGroup,
   setNewSeriesHartaGroup,
   newSeriesPublicationPace,
@@ -60,6 +66,18 @@ function SeriesAddPage({
     <SeriesAdd
       newSeriesTitle={newSeriesTitle}
       setNewSeriesTitle={setNewSeriesTitle}
+      newSeriesAuthor={newSeriesAuthor}
+      setNewSeriesAuthor={setNewSeriesAuthor}
+      newSeriesStoryAuthor={
+        newSeriesStoryAuthor
+      }
+      setNewSeriesStoryAuthor={
+        setNewSeriesStoryAuthor
+      }
+      newSeriesArtAuthor={newSeriesArtAuthor}
+      setNewSeriesArtAuthor={
+        setNewSeriesArtAuthor
+      }
       newSeriesStartIssueYear={newSeriesStartIssueYear}
       setNewSeriesStartIssueYear={setNewSeriesStartIssueYear}
       newSeriesStartIssue={newSeriesStartIssue}

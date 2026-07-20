@@ -31,6 +31,28 @@ function DataActionMenu({
     }
   }
 
+  const handleSplitBackup = async () => {
+    const ok =
+      window.confirm(
+        '分割バックアップを作成しますか？画像が多い場合はこちらを使ってください。'
+      )
+
+    if (!ok) {
+      return
+    }
+
+    try {
+      await onBackupData({
+        split: true
+      })
+      setIsOpen(false)
+    } catch {
+      window.alert(
+        '分割バックアップに失敗しました。'
+      )
+    }
+  }
+
   const handleImportButtonClick = () => {
     const ok =
       window.confirm(
@@ -46,22 +68,25 @@ function DataActionMenu({
 
   const handleImportFileChange =
     async (e) => {
-      const file =
-        e.target.files?.[0]
+      const files =
+        Array.from(
+          e.target.files || []
+        )
 
       e.target.value = ''
 
-      if (!file) {
+      if (!files.length) {
         return
       }
 
       try {
-        await onImportData(file)
+        await onImportData(files)
         window.alert('インポートしました。')
         setIsOpen(false)
-      } catch {
+      } catch (error) {
         window.alert(
-          'インポートに失敗しました。バックアップファイルを確認してください。'
+          error?.message ||
+            'インポートに失敗しました。バックアップファイルを確認してください。'
         )
       }
     }
@@ -106,6 +131,13 @@ function DataActionMenu({
           >
             バックアップ
           </button>
+
+          <button
+            type="button"
+            onClick={handleSplitBackup}
+          >
+            分割バックアップ
+          </button>
         </div>
       )}
 
@@ -114,6 +146,7 @@ function DataActionMenu({
         className="data-import-input"
         type="file"
         accept="application/json,.json"
+        multiple
         onChange={handleImportFileChange}
       />
     </div>

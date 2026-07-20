@@ -196,6 +196,21 @@ function App() {
     useState('')
 
   const [
+    newSeriesAuthor,
+    setNewSeriesAuthor
+  ] = useState('')
+
+  const [
+    newSeriesStoryAuthor,
+    setNewSeriesStoryAuthor
+  ] = useState('')
+
+  const [
+    newSeriesArtAuthor,
+    setNewSeriesArtAuthor
+  ] = useState('')
+
+  const [
     newSeriesStartIssueYear,
     setNewSeriesStartIssueYear
   ] = useState(new Date().getFullYear())
@@ -573,6 +588,18 @@ function App() {
             magazineList={magazineList}
             newSeriesTitle={newSeriesTitle}
             setNewSeriesTitle={setNewSeriesTitle}
+            newSeriesAuthor={newSeriesAuthor}
+            setNewSeriesAuthor={setNewSeriesAuthor}
+            newSeriesStoryAuthor={
+              newSeriesStoryAuthor
+            }
+            setNewSeriesStoryAuthor={
+              setNewSeriesStoryAuthor
+            }
+            newSeriesArtAuthor={newSeriesArtAuthor}
+            setNewSeriesArtAuthor={
+              setNewSeriesArtAuthor
+            }
             newSeriesStartIssueYear={newSeriesStartIssueYear}
             setNewSeriesStartIssueYear={setNewSeriesStartIssueYear}
             newSeriesStartIssue={newSeriesStartIssue}
@@ -607,6 +634,9 @@ function App() {
               saveNewSeries({
                 magazineId,
                 newSeriesTitle,
+                newSeriesAuthor,
+                newSeriesStoryAuthor,
+                newSeriesArtAuthor,
                 newSeriesStartIssueYear,
                 newSeriesStartIssue,
                 newSeriesIssueYear,
@@ -617,6 +647,9 @@ function App() {
                 newSeriesHartaGroup,
                 newSeriesPublicationPace,
                 setNewSeriesTitle,
+                setNewSeriesAuthor,
+                setNewSeriesStoryAuthor,
+                setNewSeriesArtAuthor,
                 setNewSeriesStartIssueYear,
                 setNewSeriesStartIssue,
                 setNewSeriesIssueYear,

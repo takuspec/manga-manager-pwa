@@ -22,7 +22,9 @@ import {
   dataUrlToBlob,
   deleteImage,
   getImageBackupEntries,
+  getImageBlob,
   getImageStorageStats,
+  blobToDataUrl,
   restoreImageBackupEntries,
   saveImageBlob
 } from '../utils/imageDb'
@@ -32,6 +34,8 @@ const SERIES_STORAGE_KEY = 'series-v2'
 const IMAGE_MIGRATION_COMPLETE_KEY =
   'image-migration-complete-v1'
 const LEGACY_IMAGE_MIGRATION_LIMIT = 5
+const SPLIT_BACKUP_PART_MAX_BYTES =
+  80 * 1024 * 1024
 
 let hasShownStorageAlert = false
 
@@ -51,6 +55,81 @@ function isImageDataUrl(value) {
     typeof value === 'string' &&
     value.startsWith('data:image/')
   )
+}
+
+function createBackupTimestamp() {
+  return new Date()
+    .toISOString()
+    .replace(/[:.]/g, '-')
+}
+
+function downloadJsonFile(data, fileName) {
+  const blob =
+    new Blob(
+      [
+        JSON.stringify(
+          data,
+          null,
+          2
+        )
+      ],
+      {
+        type: 'application/json'
+      }
+    )
+
+  const url =
+    URL.createObjectURL(blob)
+
+  const link =
+    document.createElement('a')
+
+  link.href = url
+  link.download = fileName
+
+  document.body.appendChild(link)
+  link.click()
+  link.remove()
+
+  URL.revokeObjectURL(url)
+}
+
+function readJsonFile(file) {
+  return new Promise((resolve, reject) => {
+    const reader =
+      new FileReader()
+
+    reader.onload = () => {
+      try {
+        resolve(
+          JSON.parse(reader.result)
+        )
+      } catch (error) {
+        reject(error)
+      }
+    }
+
+    reader.onerror = () => {
+      reject(reader.error)
+    }
+
+    reader.readAsText(file)
+  })
+}
+
+function getImportedLists(data) {
+  return {
+    importedMagazines:
+      data.magazines ||
+      data.magazineList ||
+      data[MAGAZINE_STORAGE_KEY] ||
+      data.storage?.[MAGAZINE_STORAGE_KEY],
+    importedSeries:
+      data.series ||
+      data.seriesList ||
+      data[SERIES_STORAGE_KEY] ||
+      data.storage?.[SERIES_STORAGE_KEY]
+  }
 }
 
 async function saveImageValue(imageValue) {
@@ -109,6 +188,9 @@ function normalizeSeriesItem(item) {
 
   return {
     ...item,
+    author: item.author || '',
+    storyAuthor: item.storyAuthor || '',
+    artAuthor: item.artAuthor || '',
     status: normalizeSeriesStatus(item.status),
     completedIssueYear:
       hasCompletedIssueYear &&
@@ -920,6 +1002,9 @@ function useMangaData({
   const saveNewSeries = async ({
     magazineId,
     newSeriesTitle,
+    newSeriesAuthor,
+    newSeriesStoryAuthor,
+    newSeriesArtAuthor,
     newSeriesStartIssueYear,
     newSeriesStartIssue,
     newSeriesIssueYear,
@@ -929,6 +1014,9 @@ function useMangaData({
     newSeriesImage,
     newSeriesPublicationPace,
     setNewSeriesTitle,
+    setNewSeriesAuthor,
+    setNewSeriesStoryAuthor,
+    setNewSeriesArtAuthor,
     setNewSeriesHartaGroup,
     setNewSeriesStartIssueYear,
     setNewSeriesStartIssue,
@@ -1002,6 +1090,9 @@ function useMangaData({
   const newSeries = {
     id: Date.now(),
     title: newSeriesTitle,
+    author: newSeriesAuthor.trim(),
+    storyAuthor: newSeriesStoryAuthor.trim(),
+    artAuthor: newSeriesArtAuthor.trim(),
     magazineId: magazineId,
 
     startIssueYear: startIssueYear,
@@ -1030,6 +1121,9 @@ function useMangaData({
     ])
 
     setNewSeriesTitle('')
+    setNewSeriesAuthor('')
+    setNewSeriesStoryAuthor('')
+    setNewSeriesArtAuthor('')
     setNewSeriesStartIssueYear(new Date().getFullYear())
     setNewSeriesStartIssue(1)
     setNewSeriesIssueYear(new Date().getFullYear())
@@ -1069,14 +1163,25 @@ function useMangaData({
 
   const saveEdit = (
     id,
-    editTitle
+    editTitle,
+    authorFields = {}
   ) => {
     setSeriesList((prevList) =>
       prevList.map((item) => {
         return item.id === id
           ? {
               ...item,
-              title: editTitle
+              title: editTitle,
+              author:
+                authorFields.author ?? item.author ?? '',
+              storyAuthor:
+                authorFields.storyAuthor ??
+                item.storyAuthor ??
+                '',
+              artAuthor:
+                authorFields.artAuthor ??
+                item.artAuthor ??
+                ''
             }
           : item
       })
@@ -1807,12 +1912,115 @@ function useMangaData({
     }
   }
 
-  const backupData = async () => {
+  const backupData = async (
+    options = {}
+  ) => {
     const usedImageIds =
       collectUsedImageIds(
         magazineList,
         seriesList
       )
+
+    if (options.split) {
+      const timestamp =
+        createBackupTimestamp()
+
+      const backupId =
+        `split_${timestamp}`
+
+      let imagePartIndex = 1
+      let imageCount = 0
+      let currentImages = []
+      let currentPartBytes = 0
+
+      const flushImagePart = () => {
+        if (!currentImages.length) {
+          return
+        }
+
+        downloadJsonFile(
+          {
+            app: 'manga-manager',
+            version: 3,
+            backupType: 'split',
+            exportedAt:
+              new Date().toISOString(),
+            splitBackup: {
+              id: backupId,
+              kind: 'images',
+              index: imagePartIndex
+            },
+            images: currentImages
+          },
+          `manga-manager-backup-${timestamp}-images-${String(
+            imagePartIndex
+          ).padStart(3, '0')}.json`
+        )
+
+        imagePartIndex += 1
+        currentImages = []
+        currentPartBytes = 0
+      }
+
+      for (const imageId of usedImageIds) {
+        const blob =
+          await getImageBlob(imageId)
+
+        if (!blob) {
+          continue
+        }
+
+        const entry = {
+          id: imageId,
+          type: blob.type,
+          dataUrl:
+            await blobToDataUrl(blob)
+        }
+
+        const entryBytes =
+          JSON.stringify(entry).length + 128
+
+        if (
+          currentImages.length &&
+          currentPartBytes + entryBytes >
+            SPLIT_BACKUP_PART_MAX_BYTES
+        ) {
+          flushImagePart()
+        }
+
+        currentImages.push(entry)
+        currentPartBytes += entryBytes
+        imageCount += 1
+      }
+
+      flushImagePart()
+
+      downloadJsonFile(
+        {
+          app: 'manga-manager',
+          version: 3,
+          backupType: 'split',
+          exportedAt:
+            new Date().toISOString(),
+          storageKeys: {
+            magazines: MAGAZINE_STORAGE_KEY,
+            series: SERIES_STORAGE_KEY
+          },
+          splitBackup: {
+            id: backupId,
+            kind: 'data',
+            imagePartCount:
+              imagePartIndex - 1,
+            imageCount
+          },
+          magazines: magazineList,
+          series: seriesList
+        },
+        `manga-manager-backup-${timestamp}-data.json`
+      )
+
+      return
+    }
 
     const images =
       await getImageBackupEntries(
@@ -1832,150 +2040,216 @@ function useMangaData({
       images: images
     }
 
-    const blob =
-      new Blob(
-        [
-          JSON.stringify(
-            backup,
-            null,
-            2
-          )
-        ],
+    const timestamp =
+      createBackupTimestamp()
+
+    downloadJsonFile(
+      backup,
+      `manga-manager-backup-${timestamp}.json`
+    )
+  }
+
+  const restoreImportedData = async (
+    data,
+    {
+      restoreImages = true
+    } = {}
+  ) => {
+    const {
+      importedMagazines,
+      importedSeries
+    } = getImportedLists(data)
+
+    if (
+      !Array.isArray(importedMagazines) ||
+      !Array.isArray(importedSeries)
+    ) {
+      throw new Error(
+        'Invalid backup data'
+      )
+    }
+
+    if (restoreImages) {
+      await restoreImageBackupEntries(
+        data.images || []
+      )
+    }
+
+    const nextMagazines =
+      await migrateLegacyImagesInListSafely(
+        importedMagazines,
         {
-          type: 'application/json'
+          count: 0,
+          limit: Infinity
         }
       )
 
-    const url =
-      URL.createObjectURL(blob)
+    const nextSeries =
+      await migrateLegacyImagesInListSafely(
+        importedSeries,
+        {
+          count: 0,
+          limit: Infinity
+        }
+      )
 
-    const timestamp =
-      new Date()
-        .toISOString()
-        .replace(/[:.]/g, '-')
+    const normalizedSeries =
+      nextSeries.list.map(
+        normalizeSeriesItem
+      )
 
-    const link =
-      document.createElement('a')
+    safeSetLocalStorageWithDiagnostics(
+      MAGAZINE_STORAGE_KEY,
+      JSON.stringify(nextMagazines.list),
+      setStorageErrorMessage
+    )
 
-    link.href = url
-    link.download =
-      `manga-manager-backup-${timestamp}.json`
+    safeSetLocalStorageWithDiagnostics(
+      SERIES_STORAGE_KEY,
+      JSON.stringify(normalizedSeries),
+      setStorageErrorMessage
+    )
 
-    document.body.appendChild(link)
-    link.click()
-    link.remove()
+    setMagazineList(nextMagazines.list)
+    setSeriesList(normalizedSeries)
+    setSelectedSeriesIds([])
+    setBulkIssueValue('')
 
-    URL.revokeObjectURL(url)
+    await cleanupUnusedImages(
+      collectUsedImageIds(
+        nextMagazines.list,
+        normalizedSeries
+      )
+    )
+
+    if (
+      !nextMagazines.hasRemaining &&
+      !nextSeries.hasRemaining
+    ) {
+      localStorage.setItem(
+        IMAGE_MIGRATION_COMPLETE_KEY,
+        'true'
+      )
+    } else {
+      localStorage.removeItem(
+        IMAGE_MIGRATION_COMPLETE_KEY
+      )
+    }
   }
 
-  const importData = (file) => {
-    return new Promise((resolve, reject) => {
-      const reader =
-        new FileReader()
+  const importSplitData = async (files) => {
+    let dataPart = null
+    let backupId = ''
+    let restoredImageParts = 0
+    const restoredPartIndexes =
+      new Set()
 
-      reader.onload = async () => {
-        try {
-          const data =
-            JSON.parse(reader.result)
+    for (const file of files) {
+      const data =
+        await readJsonFile(file)
 
-          const importedMagazines =
-            data.magazines ||
-            data.magazineList ||
-            data[MAGAZINE_STORAGE_KEY] ||
-            data.storage?.[MAGAZINE_STORAGE_KEY]
+      const splitInfo =
+        data.splitBackup
 
-          const importedSeries =
-            data.series ||
-            data.seriesList ||
-            data[SERIES_STORAGE_KEY] ||
-            data.storage?.[SERIES_STORAGE_KEY]
-
-          if (
-            !Array.isArray(importedMagazines) ||
-            !Array.isArray(importedSeries)
-          ) {
-            throw new Error(
-              'Invalid backup data'
-            )
-          }
-
-          await restoreImageBackupEntries(
-            data.images || []
-          )
-
-          const nextMagazines =
-            await migrateLegacyImagesInListSafely(
-              importedMagazines,
-              {
-                count: 0,
-                limit: Infinity
-              }
-            )
-
-          const nextSeries =
-            await migrateLegacyImagesInListSafely(
-              importedSeries,
-              {
-                count: 0,
-                limit: Infinity
-              }
-            )
-
-          const normalizedSeries =
-            nextSeries.list.map(
-              normalizeSeriesItem
-            )
-
-          safeSetLocalStorageWithDiagnostics(
-            MAGAZINE_STORAGE_KEY,
-            JSON.stringify(nextMagazines.list),
-            setStorageErrorMessage
-          )
-
-          safeSetLocalStorageWithDiagnostics(
-            SERIES_STORAGE_KEY,
-            JSON.stringify(normalizedSeries),
-            setStorageErrorMessage
-          )
-
-          setMagazineList(nextMagazines.list)
-          setSeriesList(normalizedSeries)
-          setSelectedSeriesIds([])
-          setBulkIssueValue('')
-
-          await cleanupUnusedImages(
-            collectUsedImageIds(
-              nextMagazines.list,
-              normalizedSeries
-            )
-          )
-
-          if (
-            !nextMagazines.hasRemaining &&
-            !nextSeries.hasRemaining
-          ) {
-            localStorage.setItem(
-              IMAGE_MIGRATION_COMPLETE_KEY,
-              'true'
-            )
-          } else {
-            localStorage.removeItem(
-              IMAGE_MIGRATION_COMPLETE_KEY
-            )
-          }
-
-          resolve()
-        } catch (error) {
-          reject(error)
-        }
+      if (
+        data.backupType !== 'split' ||
+        !splitInfo?.kind
+      ) {
+        throw new Error(
+          '分割バックアップではないファイルが含まれています。'
+        )
       }
 
-      reader.onerror = () => {
-        reject(reader.error)
+      if (!backupId) {
+        backupId = splitInfo.id
       }
 
-      reader.readAsText(file)
-    })
+      if (splitInfo.id !== backupId) {
+        throw new Error(
+          '別々の分割バックアップファイルが混ざっています。'
+        )
+      }
+
+      if (splitInfo.kind === 'data') {
+        dataPart = data
+        continue
+      }
+
+      if (splitInfo.kind === 'images') {
+        await restoreImageBackupEntries(
+          data.images || []
+        )
+        restoredImageParts += 1
+        restoredPartIndexes.add(
+          splitInfo.index
+        )
+      }
+    }
+
+    if (!dataPart) {
+      throw new Error(
+        '分割バックアップの本体ファイルが見つかりません。'
+      )
+    }
+
+    const expectedImageParts =
+      dataPart.splitBackup?.imagePartCount || 0
+
+    if (
+      restoredPartIndexes.size <
+      expectedImageParts
+    ) {
+      throw new Error(
+        `画像ファイルが不足しています。${expectedImageParts}個中${restoredImageParts}個しか選択されていません。`
+      )
+    }
+
+    await restoreImportedData(
+      dataPart,
+      {
+        restoreImages: false
+      }
+    )
+  }
+
+  const importData = async (fileOrFiles) => {
+    const files =
+      fileOrFiles instanceof File
+        ? [fileOrFiles]
+        : Array.from(fileOrFiles || [])
+
+    if (!files.length) {
+      return
+    }
+
+    if (files.length > 1) {
+      await importSplitData(files)
+      return
+    }
+
+    const data =
+      await readJsonFile(files[0])
+
+    if (data.backupType === 'split') {
+      if (
+        data.splitBackup?.kind === 'data' &&
+        !data.splitBackup?.imagePartCount
+      ) {
+        await restoreImportedData(
+          data,
+          {
+            restoreImages: false
+          }
+        )
+        return
+      }
+
+      throw new Error(
+        '分割バックアップは本体ファイルと画像ファイルをすべて選択してください。'
+      )
+    }
+
+    await restoreImportedData(data)
   }
 
   return {

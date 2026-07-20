@@ -14,6 +14,12 @@ import {
 function SeriesAdd({
   newSeriesTitle,
   setNewSeriesTitle,
+  newSeriesAuthor,
+  setNewSeriesAuthor,
+  newSeriesStoryAuthor,
+  setNewSeriesStoryAuthor,
+  newSeriesArtAuthor,
+  setNewSeriesArtAuthor,
   newSeriesStartIssueYear,
   setNewSeriesStartIssueYear,
   newSeriesStartIssue,
@@ -241,6 +247,46 @@ function SeriesAdd({
             suffix={isHarta ? '' : undefined}
             onYearSelected={
               handleStartIssueYearChange
+            }
+          />
+        </div>
+
+        <div className="edit-group">
+          <div>作者</div>
+
+          <input
+            value={newSeriesAuthor}
+            placeholder="作者"
+            onChange={(e) =>
+              setNewSeriesAuthor(e.target.value)
+            }
+          />
+        </div>
+
+        <div className="edit-group">
+          <div>原作</div>
+
+          <input
+            value={newSeriesStoryAuthor}
+            placeholder="原作が別の場合"
+            onChange={(e) =>
+              setNewSeriesStoryAuthor(
+                e.target.value
+              )
+            }
+          />
+        </div>
+
+        <div className="edit-group">
+          <div>作画</div>
+
+          <input
+            value={newSeriesArtAuthor}
+            placeholder="作画が別の場合"
+            onChange={(e) =>
+              setNewSeriesArtAuthor(
+                e.target.value
+              )
             }
           />
         </div>

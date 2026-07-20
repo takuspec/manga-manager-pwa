@@ -44,6 +44,19 @@ function SeriesEdit({
   const [localTitle, setLocalTitle] =
     useState(editTitle)
 
+  const [localAuthor, setLocalAuthor] =
+    useState(selectedSeries.author || '')
+
+  const [
+    localStoryAuthor,
+    setLocalStoryAuthor
+  ] = useState(selectedSeries.storyAuthor || '')
+
+  const [
+    localArtAuthor,
+    setLocalArtAuthor
+  ] = useState(selectedSeries.artAuthor || '')
+
   const [localStartIssueYear, setLocalStartIssueYear] =
     useState(
       selectedSeries.startIssueYear ||
@@ -138,6 +151,18 @@ function SeriesEdit({
   useEffect(() => {
     setLocalTitle(editTitle)
 
+    setLocalAuthor(
+      selectedSeries.author || ''
+    )
+
+    setLocalStoryAuthor(
+      selectedSeries.storyAuthor || ''
+    )
+
+    setLocalArtAuthor(
+      selectedSeries.artAuthor || ''
+    )
+
     setLocalImage(
       selectedSeries.image || ''
     )
@@ -216,7 +241,13 @@ function SeriesEdit({
 
     saveEdit(
       selectedSeries.id,
-      localTitle
+      localTitle,
+      {
+        author: localAuthor.trim(),
+        storyAuthor:
+          localStoryAuthor.trim(),
+        artAuthor: localArtAuthor.trim()
+      }
     )
 
     updateStartIssueDirect(
@@ -388,6 +419,46 @@ function SeriesEdit({
             suffix={isHarta ? '' : undefined}
             onYearSelected={
               handleStartIssueYearChange
+            }
+          />
+        </div>
+
+        <div className="edit-group">
+          <div>作者</div>
+
+          <input
+            value={localAuthor}
+            placeholder="作者"
+            onChange={(e) =>
+              setLocalAuthor(e.target.value)
+            }
+          />
+        </div>
+
+        <div className="edit-group">
+          <div>原作</div>
+
+          <input
+            value={localStoryAuthor}
+            placeholder="原作が別の場合"
+            onChange={(e) =>
+              setLocalStoryAuthor(
+                e.target.value
+              )
+            }
+          />
+        </div>
+
+        <div className="edit-group">
+          <div>作画</div>
+
+          <input
+            value={localArtAuthor}
+            placeholder="作画が別の場合"
+            onChange={(e) =>
+              setLocalArtAuthor(
+                e.target.value
+              )
             }
           />
         </div>
