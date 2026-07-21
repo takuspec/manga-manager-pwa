@@ -211,6 +211,11 @@ function App() {
   ] = useState('')
 
   const [
+    newSeriesScriptAuthor,
+    setNewSeriesScriptAuthor
+  ] = useState('')
+
+  const [
     newSeriesStartIssueYear,
     setNewSeriesStartIssueYear
   ] = useState(new Date().getFullYear())
@@ -600,6 +605,12 @@ function App() {
             setNewSeriesArtAuthor={
               setNewSeriesArtAuthor
             }
+            newSeriesScriptAuthor={
+              newSeriesScriptAuthor
+            }
+            setNewSeriesScriptAuthor={
+              setNewSeriesScriptAuthor
+            }
             newSeriesStartIssueYear={newSeriesStartIssueYear}
             setNewSeriesStartIssueYear={setNewSeriesStartIssueYear}
             newSeriesStartIssue={newSeriesStartIssue}
@@ -637,6 +648,7 @@ function App() {
                 newSeriesAuthor,
                 newSeriesStoryAuthor,
                 newSeriesArtAuthor,
+                newSeriesScriptAuthor,
                 newSeriesStartIssueYear,
                 newSeriesStartIssue,
                 newSeriesIssueYear,
@@ -650,6 +662,7 @@ function App() {
                 setNewSeriesAuthor,
                 setNewSeriesStoryAuthor,
                 setNewSeriesArtAuthor,
+                setNewSeriesScriptAuthor,
                 setNewSeriesStartIssueYear,
                 setNewSeriesStartIssue,
                 setNewSeriesIssueYear,

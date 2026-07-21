@@ -20,6 +20,8 @@ function SeriesAdd({
   setNewSeriesStoryAuthor,
   newSeriesArtAuthor,
   setNewSeriesArtAuthor,
+  newSeriesScriptAuthor,
+  setNewSeriesScriptAuthor,
   newSeriesStartIssueYear,
   setNewSeriesStartIssueYear,
   newSeriesStartIssue,
@@ -75,6 +77,21 @@ function SeriesAdd({
         unreadLabel: '未完'
       }
     )
+
+  const authorSummary = [
+    newSeriesAuthor.trim(),
+    newSeriesStoryAuthor.trim()
+      ? `原作: ${newSeriesStoryAuthor.trim()}`
+      : '',
+    newSeriesArtAuthor.trim()
+      ? `作画: ${newSeriesArtAuthor.trim()}`
+      : '',
+    newSeriesScriptAuthor.trim()
+      ? `脚本: ${newSeriesScriptAuthor.trim()}`
+      : ''
+  ]
+    .filter(Boolean)
+    .join(' / ')
 
   const [
     showCropModal,
@@ -251,45 +268,70 @@ function SeriesAdd({
           />
         </div>
 
-        <div className="edit-group">
-          <div>作者</div>
+        <details className="edit-accordion">
+          <summary>
+            <span>作者情報</span>
+            <span className="edit-accordion-summary">
+              {authorSummary || '未登録'}
+            </span>
+          </summary>
 
-          <input
-            value={newSeriesAuthor}
-            placeholder="作者"
-            onChange={(e) =>
-              setNewSeriesAuthor(e.target.value)
-            }
-          />
-        </div>
+          <div className="edit-accordion-body">
+            <div className="edit-group">
+              <div>作者</div>
 
-        <div className="edit-group">
-          <div>原作</div>
+              <input
+                value={newSeriesAuthor}
+                placeholder="作者"
+                onChange={(e) =>
+                  setNewSeriesAuthor(e.target.value)
+                }
+              />
+            </div>
 
-          <input
-            value={newSeriesStoryAuthor}
-            placeholder="原作が別の場合"
-            onChange={(e) =>
-              setNewSeriesStoryAuthor(
-                e.target.value
-              )
-            }
-          />
-        </div>
+            <div className="edit-group">
+              <div>原作</div>
 
-        <div className="edit-group">
-          <div>作画</div>
+              <input
+                value={newSeriesStoryAuthor}
+                placeholder="原作が別の場合"
+                onChange={(e) =>
+                  setNewSeriesStoryAuthor(
+                    e.target.value
+                  )
+                }
+              />
+            </div>
 
-          <input
-            value={newSeriesArtAuthor}
-            placeholder="作画が別の場合"
-            onChange={(e) =>
-              setNewSeriesArtAuthor(
-                e.target.value
-              )
-            }
-          />
-        </div>
+            <div className="edit-group">
+              <div>作画</div>
+
+              <input
+                value={newSeriesArtAuthor}
+                placeholder="作画が別の場合"
+                onChange={(e) =>
+                  setNewSeriesArtAuthor(
+                    e.target.value
+                  )
+                }
+              />
+            </div>
+
+            <div className="edit-group">
+              <div>脚本</div>
+
+              <input
+                value={newSeriesScriptAuthor}
+                placeholder="脚本が別の場合"
+                onChange={(e) =>
+                  setNewSeriesScriptAuthor(
+                    e.target.value
+                  )
+                }
+              />
+            </div>
+          </div>
+        </details>
 
         <div className="edit-group">
           <div>読了</div>

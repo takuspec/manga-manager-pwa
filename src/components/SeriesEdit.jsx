@@ -57,6 +57,11 @@ function SeriesEdit({
     setLocalArtAuthor
   ] = useState(selectedSeries.artAuthor || '')
 
+  const [
+    localScriptAuthor,
+    setLocalScriptAuthor
+  ] = useState(selectedSeries.scriptAuthor || '')
+
   const [localStartIssueYear, setLocalStartIssueYear] =
     useState(
       selectedSeries.startIssueYear ||
@@ -118,6 +123,21 @@ function SeriesEdit({
       }
     )
 
+  const authorSummary = [
+    localAuthor.trim(),
+    localStoryAuthor.trim()
+      ? `原作: ${localStoryAuthor.trim()}`
+      : '',
+    localArtAuthor.trim()
+      ? `作画: ${localArtAuthor.trim()}`
+      : '',
+    localScriptAuthor.trim()
+      ? `脚本: ${localScriptAuthor.trim()}`
+      : ''
+  ]
+    .filter(Boolean)
+    .join(' / ')
+
   const [localImage, setLocalImage] =
     useState(selectedSeries.image || '')
 
@@ -161,6 +181,10 @@ function SeriesEdit({
 
     setLocalArtAuthor(
       selectedSeries.artAuthor || ''
+    )
+
+    setLocalScriptAuthor(
+      selectedSeries.scriptAuthor || ''
     )
 
     setLocalImage(
@@ -246,7 +270,9 @@ function SeriesEdit({
         author: localAuthor.trim(),
         storyAuthor:
           localStoryAuthor.trim(),
-        artAuthor: localArtAuthor.trim()
+        artAuthor: localArtAuthor.trim(),
+        scriptAuthor:
+          localScriptAuthor.trim()
       }
     )
 
@@ -423,45 +449,70 @@ function SeriesEdit({
           />
         </div>
 
-        <div className="edit-group">
-          <div>作者</div>
+        <details className="edit-accordion">
+          <summary>
+            <span>作者情報</span>
+            <span className="edit-accordion-summary">
+              {authorSummary || '未登録'}
+            </span>
+          </summary>
 
-          <input
-            value={localAuthor}
-            placeholder="作者"
-            onChange={(e) =>
-              setLocalAuthor(e.target.value)
-            }
-          />
-        </div>
+          <div className="edit-accordion-body">
+            <div className="edit-group">
+              <div>作者</div>
 
-        <div className="edit-group">
-          <div>原作</div>
+              <input
+                value={localAuthor}
+                placeholder="作者"
+                onChange={(e) =>
+                  setLocalAuthor(e.target.value)
+                }
+              />
+            </div>
 
-          <input
-            value={localStoryAuthor}
-            placeholder="原作が別の場合"
-            onChange={(e) =>
-              setLocalStoryAuthor(
-                e.target.value
-              )
-            }
-          />
-        </div>
+            <div className="edit-group">
+              <div>原作</div>
 
-        <div className="edit-group">
-          <div>作画</div>
+              <input
+                value={localStoryAuthor}
+                placeholder="原作が別の場合"
+                onChange={(e) =>
+                  setLocalStoryAuthor(
+                    e.target.value
+                  )
+                }
+              />
+            </div>
 
-          <input
-            value={localArtAuthor}
-            placeholder="作画が別の場合"
-            onChange={(e) =>
-              setLocalArtAuthor(
-                e.target.value
-              )
-            }
-          />
-        </div>
+            <div className="edit-group">
+              <div>作画</div>
+
+              <input
+                value={localArtAuthor}
+                placeholder="作画が別の場合"
+                onChange={(e) =>
+                  setLocalArtAuthor(
+                    e.target.value
+                  )
+                }
+              />
+            </div>
+
+            <div className="edit-group">
+              <div>脚本</div>
+
+              <input
+                value={localScriptAuthor}
+                placeholder="脚本が別の場合"
+                onChange={(e) =>
+                  setLocalScriptAuthor(
+                    e.target.value
+                  )
+                }
+              />
+            </div>
+          </div>
+        </details>
 
         <div className="edit-group">
           <div>読了</div>

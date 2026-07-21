@@ -11,6 +11,8 @@ function SeriesAddPage({
   setNewSeriesStoryAuthor,
   newSeriesArtAuthor,
   setNewSeriesArtAuthor,
+  newSeriesScriptAuthor,
+  setNewSeriesScriptAuthor,
   newSeriesHartaGroup,
   setNewSeriesHartaGroup,
   newSeriesPublicationPace,
@@ -77,6 +79,12 @@ function SeriesAddPage({
       newSeriesArtAuthor={newSeriesArtAuthor}
       setNewSeriesArtAuthor={
         setNewSeriesArtAuthor
+      }
+      newSeriesScriptAuthor={
+        newSeriesScriptAuthor
+      }
+      setNewSeriesScriptAuthor={
+        setNewSeriesScriptAuthor
       }
       newSeriesStartIssueYear={newSeriesStartIssueYear}
       setNewSeriesStartIssueYear={setNewSeriesStartIssueYear}

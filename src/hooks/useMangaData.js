@@ -191,6 +191,7 @@ function normalizeSeriesItem(item) {
     author: item.author || '',
     storyAuthor: item.storyAuthor || '',
     artAuthor: item.artAuthor || '',
+    scriptAuthor: item.scriptAuthor || '',
     status: normalizeSeriesStatus(item.status),
     completedIssueYear:
       hasCompletedIssueYear &&
@@ -1005,6 +1006,7 @@ function useMangaData({
     newSeriesAuthor,
     newSeriesStoryAuthor,
     newSeriesArtAuthor,
+    newSeriesScriptAuthor,
     newSeriesStartIssueYear,
     newSeriesStartIssue,
     newSeriesIssueYear,
@@ -1017,6 +1019,7 @@ function useMangaData({
     setNewSeriesAuthor,
     setNewSeriesStoryAuthor,
     setNewSeriesArtAuthor,
+    setNewSeriesScriptAuthor,
     setNewSeriesHartaGroup,
     setNewSeriesStartIssueYear,
     setNewSeriesStartIssue,
@@ -1093,6 +1096,8 @@ function useMangaData({
     author: newSeriesAuthor.trim(),
     storyAuthor: newSeriesStoryAuthor.trim(),
     artAuthor: newSeriesArtAuthor.trim(),
+    scriptAuthor:
+      newSeriesScriptAuthor.trim(),
     magazineId: magazineId,
 
     startIssueYear: startIssueYear,
@@ -1124,6 +1129,7 @@ function useMangaData({
     setNewSeriesAuthor('')
     setNewSeriesStoryAuthor('')
     setNewSeriesArtAuthor('')
+    setNewSeriesScriptAuthor('')
     setNewSeriesStartIssueYear(new Date().getFullYear())
     setNewSeriesStartIssue(1)
     setNewSeriesIssueYear(new Date().getFullYear())
@@ -1181,6 +1187,10 @@ function useMangaData({
               artAuthor:
                 authorFields.artAuthor ??
                 item.artAuthor ??
+                '',
+              scriptAuthor:
+                authorFields.scriptAuthor ??
+                item.scriptAuthor ??
                 ''
             }
           : item
