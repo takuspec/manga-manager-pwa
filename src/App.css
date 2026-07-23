@@ -2412,10 +2412,11 @@ select.issue-number-select option {
 }
 
 .timeline-list-grid .timeline-event-cover {
-  width: 100%;
+  width: 86%;
   height: auto;
   aspect-ratio: calc(0.82 / var(--timeline-grid-scale, 1));
   border-radius: calc(7px * var(--timeline-grid-scale, 1));
+  justify-self: center;
 }
 
 .timeline-list-grid .timeline-event-top {
@@ -2441,7 +2442,7 @@ select.issue-number-select option {
 }
 
 .timeline-list-grid .timeline-event-title {
-  font-size: calc(11px * var(--timeline-grid-scale, 1));
+  font-size: calc(10.5px * var(--timeline-grid-scale, 1));
   line-height: 1.2;
   white-space: nowrap;
   overflow: hidden;
@@ -2450,7 +2451,7 @@ select.issue-number-select option {
 
 .timeline-list-grid .timeline-event-magazine {
   margin-top: calc(2px * var(--timeline-grid-scale, 1));
-  font-size: calc(9px * var(--timeline-grid-scale, 1));
+  font-size: calc(8.5px * var(--timeline-grid-scale, 1));
 }
 
 .timeline-footer {

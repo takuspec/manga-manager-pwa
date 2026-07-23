@@ -26,6 +26,7 @@ const timelineViewLabelMap = {
 
 const timelineGridScaleStorageKey =
   'manga-manager-timeline-grid-scale'
+const defaultTimelineGridScale = 1
 
 const clampTimelineGridScale = (value) => {
   return Math.min(
@@ -74,7 +75,7 @@ function TimelinePage({
       )
 
     if (!savedValue) {
-      return 1
+      return defaultTimelineGridScale
     }
 
     return clampTimelineGridScale(savedValue)

@@ -259,7 +259,8 @@ function MagazineListPage({
               return (
                 item.magazineId ===
                   magazine.id &&
-                item.status === 'ongoing'
+                (item.status === 'ongoing' ||
+                  item.status === 'paused')
               )
             })
 
