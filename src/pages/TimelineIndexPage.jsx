@@ -1,7 +1,7 @@
 import DataActionMenu from '../components/DataActionMenu'
 import ImageView from '../components/ImageView'
 
-function CompletedPage({
+function TimelineIndexPage({
   magazineList,
   seriesList,
   getMagazineCover,
@@ -9,55 +9,59 @@ function CompletedPage({
   onImportData,
   navigate
 }) {
-  const totalCompletedCount =
-    seriesList.filter((item) => {
-      return item.status === 'completed'
-    }).length
+  const hasTimelineEvent = (series) => {
+    return Boolean(
+      (Number(series.startIssueYear) &&
+        Number(series.startIssue)) ||
+        (Number(series.completedIssueYear) &&
+          Number(series.completedIssue))
+    )
+  }
 
-  const completedMagazines =
+  const totalTimelineCount =
+    seriesList.filter(hasTimelineEvent).length
+
+  const timelineMagazines =
     magazineList
       .map((magazine) => {
-        const completedCount =
-          seriesList.filter((item) => {
+        const timelineCount =
+          seriesList.filter((series) => {
             return (
-              item.magazineId === magazine.id &&
-              item.status === 'completed'
+              series.magazineId === magazine.id &&
+              hasTimelineEvent(series)
             )
           }).length
 
         return {
           ...magazine,
-          completedCount: completedCount
+          timelineCount
         }
       })
       .filter((magazine) => {
-        return magazine.completedCount > 0
+        return magazine.timelineCount > 0
       })
 
   return (
     <div className="app">
-
       <div className="page-title-row">
-      <div className="title">
-        完結一覧
-      </div>
+        <div className="title">
+          年表
+        </div>
 
-      <DataActionMenu
-        onBackupData={onBackupData}
-        onImportData={onImportData}
-      />
+        <DataActionMenu
+          onBackupData={onBackupData}
+          onImportData={onImportData}
+        />
       </div>
 
       <div className="completed-magazine-list">
-
-        {totalCompletedCount > 0 && (
+        {totalTimelineCount > 0 && (
           <div
             className="completed-magazine-card completed-all-card"
             onClick={() =>
-              navigate('/completed/all')
+              navigate('/timeline/all')
             }
           >
-
             <div className="magazine-cover completed-all-cover">
               <div className="no-image">
                 ALL
@@ -65,28 +69,25 @@ function CompletedPage({
             </div>
 
             <div className="magazine-info">
-
               <div className="magazine-title">
                 全雑誌
               </div>
 
               <div className="magazine-stat">
-                完結作品
+                年表対象
                 <span>
-                  {totalCompletedCount}作品
+                  {totalTimelineCount}作品
                 </span>
               </div>
-
             </div>
 
             <div className="completed-magazine-arrow">
               ›
             </div>
-
           </div>
         )}
 
-        {completedMagazines.map((magazine) => {
+        {timelineMagazines.map((magazine) => {
           const coverImage =
             getMagazineCover(magazine)
 
@@ -96,47 +97,39 @@ function CompletedPage({
               className="completed-magazine-card"
               onClick={() =>
                 navigate(
-                  `/completed/${magazine.id}`
+                  `/timeline/${magazine.id}`
                 )
               }
             >
-
               <div className="magazine-cover">
-
                 <ImageView
                   imageId={coverImage.imageId}
                   fallbackImage={coverImage.image}
                 />
-
               </div>
 
               <div className="magazine-info">
-
                 <div className="magazine-title">
                   {magazine.name}
                 </div>
 
                 <div className="magazine-stat">
-                  完結作品
+                  年表対象
                   <span>
-                    {magazine.completedCount}作品
+                    {magazine.timelineCount}作品
                   </span>
                 </div>
-
               </div>
 
               <div className="completed-magazine-arrow">
                 ›
               </div>
-
             </div>
           )
         })}
-
       </div>
 
       <div className="bottom-nav">
-
         <button
           onClick={() =>
             navigate('/')
@@ -145,22 +138,20 @@ function CompletedPage({
           雑誌
         </button>
 
-        <button>
+        <button
+          onClick={() =>
+            navigate('/completed')
+          }
+        >
           完結
         </button>
 
-        <button
-          onClick={() =>
-            navigate('/timeline')
-          }
-        >
+        <button>
           年表
         </button>
-
       </div>
-
     </div>
   )
 }
 
-export default CompletedPage
+export default TimelineIndexPage

@@ -13,11 +13,15 @@ import MagazineEditPage from './pages/MagazineEditPage'
 import CompletedPage from './pages/CompletedPage'
 import SeriesAddPage from './pages/SeriesAddPage'
 import SeriesEditPage from './pages/SeriesEditPage'
+import AuthorSeriesPage from './pages/AuthorSeriesPage'
+import AuthorSelectPage from './pages/AuthorSelectPage'
 import useMangaData from './hooks/useMangaData'
 import CompletedSeriesPage from './pages/CompletedSeriesPage'
 import WeeklySettingsPage from './pages/WeeklySettingsPage'
 import WeeklyIssueRulesPage from './pages/WeeklyIssueRulesPage'
 import WeeklyMergedIssuesPage from './pages/WeeklyMergedIssuesPage'
+import TimelineIndexPage from './pages/TimelineIndexPage'
+import TimelinePage from './pages/TimelinePage'
 
 import {
   getEstimatedLatestIssue,
@@ -510,6 +514,53 @@ function App() {
             saveCroppedMagazineImage={
               saveCroppedMagazineImage
             }
+            navigate={navigate}
+            useParams={useParams}
+          />
+        }
+      />
+
+      <Route
+        path="/timeline"
+        element={
+          <TimelineIndexPage
+            magazineList={magazineList}
+            seriesList={seriesList}
+            getMagazineCover={getMagazineCover}
+            onBackupData={backupData}
+            onImportData={importData}
+            navigate={navigate}
+          />
+        }
+      />
+
+      <Route
+        path="/timeline/:magazineId"
+        element={
+          <TimelinePage
+            magazineList={magazineList}
+            seriesList={seriesList}
+            navigate={navigate}
+          />
+        }
+      />
+
+      <Route
+        path="/authors"
+        element={
+          <AuthorSeriesPage
+            magazineList={magazineList}
+            seriesList={seriesList}
+            navigate={navigate}
+          />
+        }
+      />
+
+      <Route
+        path="/authors/select/:seriesId"
+        element={
+          <AuthorSelectPage
+            seriesList={seriesList}
             navigate={navigate}
             useParams={useParams}
           />

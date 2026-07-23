@@ -1,3 +1,8 @@
+import {
+  buildAuthorSearchParam,
+  getSeriesAuthorNames
+} from '../utils/authorUtils'
+
 function SeriesActionPanel({
   item,
   navigate,
@@ -8,6 +13,11 @@ function SeriesActionPanel({
   onEdit,
   onClose
 }) {
+  const authorSearchParam =
+    buildAuthorSearchParam(item)
+  const authorNames =
+    getSeriesAuthorNames(item)
+
   return (
     <div
       className={`series-popup-menu ${className}`}
@@ -30,6 +40,29 @@ function SeriesActionPanel({
       >
         編集
       </button>
+
+      {authorSearchParam && (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation()
+            if (authorNames.length > 1) {
+              navigate(
+                `/authors/select/${item.id}`
+              )
+            } else {
+              navigate(
+                `/authors?q=${encodeURIComponent(
+                  authorSearchParam
+                )}`
+              )
+            }
+            onClose?.()
+          }}
+        >
+          同作者の作品
+        </button>
+      )}
 
       {item.status !== 'completed' && (
         <button

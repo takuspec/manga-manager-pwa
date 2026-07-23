@@ -414,6 +414,14 @@ function MagazineListPage({
           完結
         </button>
 
+        <button
+          onClick={() =>
+            navigate('/timeline')
+          }
+        >
+          年表
+        </button>
+
       </div>
 
     </div>

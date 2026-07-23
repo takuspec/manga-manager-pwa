@@ -8,20 +8,20 @@ import {
   getIssueSpanCount
 } from '../utils/issueUtils'
 
-const viewModeOptions = [
-  {
-    value: 'list',
-    label: 'リスト'
-  },
+const completedViewOptions = [
   {
     value: 'grid',
     label: 'グリッド'
+  },
+  {
+    value: 'list',
+    label: 'リスト'
   }
 ]
 
-const viewModeLabelMap = {
-  list: 'リスト',
-  grid: 'グリッド'
+const completedViewLabelMap = {
+  grid: 'グリッド',
+  list: 'リスト'
 }
 
 function CompletedSeriesPage({
@@ -72,6 +72,11 @@ function CompletedSeriesPage({
     })
   }
 
+  const selectedMagazineLabel =
+    isAllMagazines
+      ? '全雑誌'
+      : magazine?.name || '雑誌'
+
   const magazineOptions = [
     {
       value: 'all',
@@ -84,11 +89,6 @@ function CompletedSeriesPage({
       }
     })
   ]
-
-  const selectedMagazineLabel =
-    isAllMagazines
-      ? '全雑誌'
-      : magazine?.name || '雑誌'
 
   const getSeriesPeriodSerial = (
     item,
@@ -240,11 +240,6 @@ function CompletedSeriesPage({
           : result * -1
       })
 
-  const closeMenus = () => {
-    setIsViewModeMenuOpen(false)
-    setIsMagazineMenuOpen(false)
-  }
-
   const renderMagazineName = (item) => {
     if (!isAllMagazines) {
       return null
@@ -325,6 +320,11 @@ function CompletedSeriesPage({
         series={item}
       />
     )
+  }
+
+  const closeMenus = () => {
+    setIsViewModeMenuOpen(false)
+    setIsMagazineMenuOpen(false)
   }
 
   return (
@@ -499,7 +499,6 @@ function CompletedSeriesPage({
       )}
 
       <div className="bottom-nav series-bottom-nav completed-series-footer">
-
         <div
           className="view-mode-selector completed-view-selector"
           onClick={(e) =>
@@ -513,7 +512,7 @@ function CompletedSeriesPage({
                 e.stopPropagation()
               }
             >
-              {viewModeOptions.map((option) => {
+              {completedViewOptions.map((option) => {
                 const isSelected =
                   viewMode === option.value
 
@@ -553,8 +552,7 @@ function CompletedSeriesPage({
               )
             }}
           >
-            {viewModeLabelMap[viewMode] ||
-              'グリッド'}
+            {completedViewLabelMap[viewMode]}
             {' '}
             {isViewModeMenuOpen
               ? '▲'
@@ -627,7 +625,6 @@ function CompletedSeriesPage({
               : '▼'}
           </button>
         </div>
-
       </div>
 
     </div>
