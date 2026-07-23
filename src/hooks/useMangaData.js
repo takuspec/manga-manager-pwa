@@ -1146,7 +1146,10 @@ function useMangaData({
     )
   }
 
-  const deleteSeries = (id) => {
+  const deleteSeries = (
+    id,
+    options = {}
+  ) => {
     const oldImageId =
       seriesList.find((item) => {
         return item.id === id
@@ -1164,7 +1167,9 @@ function useMangaData({
       })
     }
 
-    navigate(-1)
+    if (options.navigateBack !== false) {
+      navigate(-1)
+    }
   }
 
   const saveEdit = (

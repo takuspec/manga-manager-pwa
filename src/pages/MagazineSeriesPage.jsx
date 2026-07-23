@@ -534,12 +534,32 @@ function MagazineSeriesPage({
     )
   }
 
-  const saveReturnStateAndEdit = (item) => {
+  const saveReturnState = (
+    item,
+    options = {}
+  ) => {
+    const currentIndex =
+      displaySeries.findIndex((series) => {
+        return series.id === item.id
+      })
+
+    const fallbackSeries =
+      currentIndex >= 0
+        ? displaySeries[currentIndex + 1] ||
+          displaySeries[currentIndex - 1]
+        : null
+
     sessionStorage.setItem(
       SERIES_RETURN_STATE_KEY,
       JSON.stringify({
         magazineId,
         targetSeriesId: item.id,
+        fallbackSeriesId:
+          options.fallbackSeriesId ??
+          fallbackSeries?.id ??
+          null,
+        scrollTop:
+          seriesScrollRef.current?.scrollTop ?? 0,
         displaySeriesIds,
         sortMode,
         sortDirection,
@@ -550,9 +570,31 @@ function MagazineSeriesPage({
         viewMode: currentViewMode
       })
     )
+  }
+
+  const saveReturnStateAndEdit = (item) => {
+    saveReturnState(item)
 
     navigate(
       `/series/${item.id}`
+    )
+  }
+
+  const deleteSeriesAndRestorePosition = (id) => {
+    const item =
+      displaySeries.find((series) => {
+        return series.id === id
+      })
+
+    if (item) {
+      saveReturnState(item)
+    }
+
+    deleteSeries(
+      id,
+      {
+        navigateBack: false
+      }
     )
   }
 
@@ -670,6 +712,13 @@ function MagazineSeriesPage({
         const targetElement =
           scrollArea?.querySelector(
             `[data-series-card-id="${returnState.targetSeriesId}"]`
+          ) ||
+          (
+            returnState.fallbackSeriesId
+              ? scrollArea?.querySelector(
+                  `[data-series-card-id="${returnState.fallbackSeriesId}"]`
+                )
+              : null
           )
 
         if (
@@ -686,11 +735,24 @@ function MagazineSeriesPage({
             targetRect.top -
             areaRect.top -
             12
+        } else if (
+          scrollArea &&
+          typeof returnState.scrollTop === 'number'
+        ) {
+          scrollArea.scrollTop =
+            returnState.scrollTop
         }
 
-        setMenuSeriesId(
-          returnState.targetSeriesId
-        )
+        if (targetElement) {
+          setMenuSeriesId(
+            Number(
+              targetElement.getAttribute(
+                'data-series-card-id'
+              )
+            ) || null
+          )
+        }
+
         clearReturnState()
       })
 
@@ -1284,7 +1346,9 @@ function MagazineSeriesPage({
                   navigate={navigate}
                   toggleStatus={toggleStatus}
                   updateStatus={updateStatus}
-                  deleteSeries={deleteSeries}
+                  deleteSeries={
+                    deleteSeriesAndRestorePosition
+                  }
                   onEdit={saveReturnStateAndEdit}
                   onClose={() =>
                     setMenuSeriesId(null)
@@ -1384,7 +1448,9 @@ function MagazineSeriesPage({
                     navigate={navigate}
                     toggleStatus={toggleStatus}
                     updateStatus={updateStatus}
-                    deleteSeries={deleteSeries}
+                    deleteSeries={
+                      deleteSeriesAndRestorePosition
+                    }
                     onEdit={saveReturnStateAndEdit}
                     onClose={() =>
                       setMenuSeriesId(null)
@@ -1562,7 +1628,9 @@ function MagazineSeriesPage({
                     navigate={navigate}
                     toggleStatus={toggleStatus}
                     updateStatus={updateStatus}
-                    deleteSeries={deleteSeries}
+                    deleteSeries={
+                      deleteSeriesAndRestorePosition
+                    }
                     className="grid-popup-menu"
                     onEdit={saveReturnStateAndEdit}
                     onClose={() =>
