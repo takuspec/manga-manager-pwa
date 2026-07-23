@@ -408,6 +408,56 @@ function MagazineSeriesPage({
       : `未読 ${unreadCount}`
   }
 
+  const formatSeriesAuthors = (item) => {
+    const author =
+      (item.author || '').trim()
+
+    const storyAuthor =
+      (item.storyAuthor || '').trim()
+
+    const artAuthor =
+      (item.artAuthor || '').trim()
+
+    const scriptAuthor =
+      (item.scriptAuthor || '').trim()
+
+    if (storyAuthor || artAuthor || scriptAuthor) {
+      return [
+        storyAuthor
+          ? `原作: ${storyAuthor}`
+          : '',
+        artAuthor
+          ? `作画: ${artAuthor}`
+          : '',
+        scriptAuthor
+          ? `脚本: ${scriptAuthor}`
+          : ''
+      ]
+        .filter(Boolean)
+        .join(' / ')
+    }
+
+    return author
+  }
+
+  const renderSeriesAuthor = (
+    item,
+    className = 'series-author-debug'
+  ) => {
+    const label =
+      formatSeriesAuthors(item)
+
+    if (!label) {
+      return null
+    }
+
+    return (
+      <div className={className}>
+        {label}
+      </div>
+    )
+  }
+
   const renderStatusBadges = (
     item,
     unreadCount,
@@ -1290,6 +1340,8 @@ function MagazineSeriesPage({
                   {item.title}
                 </div>
 
+                {renderSeriesAuthor(item)}
+
                 <div className="series-issue issue-display-row">
                   <span className="issue-display-label">
                     読了：
@@ -1396,6 +1448,11 @@ function MagazineSeriesPage({
                   <div className="series-compact-title">
                     {item.title}
                   </div>
+
+                  {renderSeriesAuthor(
+                    item,
+                    'series-compact-author-debug'
+                  )}
 
                   <div className="series-compact-meta">
                     <span>
@@ -1573,6 +1630,11 @@ function MagazineSeriesPage({
                 <div className="card-title">
                   {item.title}
                 </div>
+
+                {renderSeriesAuthor(
+                  item,
+                  'card-author-debug'
+                )}
 
                 <div className="card-issue">
                   {renderReadIssueLabel(item)}

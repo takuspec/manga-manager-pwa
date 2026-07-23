@@ -703,6 +703,30 @@ textarea {
   text-overflow: ellipsis;
 }
 
+.series-author-debug,
+.series-compact-author-debug,
+.card-author-debug {
+  color: #93c5fd;
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.series-author-debug {
+  order: 2;
+  margin: -2px 0 6px;
+  font-size: 12px;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.series-compact-author-debug {
+  margin-top: 2px;
+  font-size: 12px;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
 .series-list-card.expanded .series-title,
 .series-compact-card.expanded .series-compact-title {
   display: block;
@@ -1030,6 +1054,13 @@ textarea {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.card-author-debug {
+  padding: 0 8px 2px;
+  font-size: 10px;
+  line-height: 1.15;
+  white-space: nowrap;
 }
 
 .card-issue {
