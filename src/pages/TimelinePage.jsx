@@ -5,6 +5,17 @@ import {
 import { useParams } from 'react-router-dom'
 import ImageView from '../components/ImageView'
 import IssueLabel from '../components/IssueLabel'
+import {
+  formatIssueSpanPeriod,
+  getEstimatedLatestIssueInfo,
+  getIssueSpanCount,
+  getSeriesPublicationPaceLabel
+} from '../utils/issueUtils'
+import { getHartaGroupLabel } from '../utils/hartaGroups'
+import {
+  buildAuthorSearchParam,
+  getSeriesAuthorNames
+} from '../utils/authorUtils'
 
 const magazineAllValue = 'all'
 
@@ -96,6 +107,11 @@ function TimelinePage({
     isMagazineMenuOpen,
     setIsMagazineMenuOpen
   ] = useState(false)
+
+  const [
+    selectedTimelineSeries,
+    setSelectedTimelineSeries
+  ] = useState(null)
 
   const getSeriesMagazine = (series) =>
     magazineList.find(
@@ -234,6 +250,253 @@ function TimelinePage({
     }, [])
   }
 
+  const getSeriesEndIssueInfo = (series) => {
+    if (
+      Number(series.completedIssueYear) &&
+      Number(series.completedIssue)
+    ) {
+      return {
+        year: Number(series.completedIssueYear),
+        issue: Number(series.completedIssue),
+        label: null
+      }
+    }
+
+    if (
+      (
+        series.status === 'completed' ||
+        series.status === 'paused'
+      ) &&
+      Number(series.issueYear) &&
+      Number(series.issue)
+    ) {
+      return {
+        year: Number(series.issueYear),
+        issue: Number(series.issue),
+        label: null
+      }
+    }
+
+    const magazine =
+      getSeriesMagazine(series)
+    const latestIssueInfo =
+      magazine
+        ? getEstimatedLatestIssueInfo(magazine)
+        : null
+
+    return {
+      year: latestIssueInfo?.year || null,
+      issue: latestIssueInfo?.issue || null,
+      label: null
+    }
+  }
+
+  const getSeriesPeriodText = (
+    series,
+    magazine
+  ) => {
+    const hasStart =
+      Number(series.startIssueYear) &&
+      Number(series.startIssue)
+    const endIssueInfo =
+      getSeriesEndIssueInfo(series)
+
+    if (
+      !magazine ||
+      !hasStart ||
+      !Number(endIssueInfo.year) ||
+      !Number(endIssueInfo.issue)
+    ) {
+      return '期間未設定'
+    }
+
+    const spanCount =
+      getIssueSpanCount(
+        magazine,
+        Number(series.startIssueYear),
+        Number(series.startIssue),
+        Number(endIssueInfo.year),
+        Number(endIssueInfo.issue)
+      )
+
+    return formatIssueSpanPeriod(
+      magazine,
+      spanCount,
+      Number(series.startIssueYear)
+    )
+  }
+
+  const getSeriesAuthorText = (series) => {
+    const author =
+      series.author?.trim?.() || ''
+    const roleAuthors = [
+      series.storyAuthor
+        ? {
+            label: '原作',
+            value: series.storyAuthor
+          }
+        : null,
+      series.artAuthor
+        ? {
+            label: '作画',
+            value: series.artAuthor
+          }
+        : null,
+      series.scriptAuthor
+        ? {
+            label: '脚本',
+            value: series.scriptAuthor
+          }
+        : null
+    ].filter(Boolean)
+
+    if (!author && !roleAuthors.length) {
+      return <span>未登録</span>
+    }
+
+    if (!roleAuthors.length) {
+      return <span>{author}</span>
+    }
+
+    return (
+      <>
+        {author && (
+          <span className="timeline-series-author-line">
+            {author}
+          </span>
+        )}
+
+        {roleAuthors.map((item) => (
+          <span
+            className="timeline-series-author-line"
+            key={`${item.label}-${item.value}`}
+          >
+            <span className="timeline-series-author-role">
+              {item.label}：
+            </span>
+
+            <span>{item.value}</span>
+          </span>
+        ))}
+      </>
+    )
+  }
+
+  const getSeriesStatusText = (series) => {
+    if (series.status === 'completed') {
+      return '完結'
+    }
+
+    if (series.status === 'paused') {
+      return '休載中'
+    }
+
+    return '連載中'
+  }
+
+  const renderSeriesReadIssue = (
+    series,
+    magazine
+  ) => {
+    if (
+      !Number(series.issueYear) ||
+      !Number(series.issue)
+    ) {
+      return <span>未読</span>
+    }
+
+    return (
+      <IssueLabel
+        magazine={magazine}
+        year={Number(series.issueYear)}
+        issue={Number(series.issue)}
+      />
+    )
+  }
+
+  const renderSeriesIssueRange = (
+    series,
+    magazine
+  ) => {
+    const hasStart =
+      Number(series.startIssueYear) &&
+      Number(series.startIssue)
+
+    return (
+      <>
+        {hasStart ? (
+          <IssueLabel
+            magazine={magazine}
+            year={Number(series.startIssueYear)}
+            issue={Number(series.startIssue)}
+          />
+        ) : (
+          <span>開始号未設定</span>
+        )}
+
+        <span className="timeline-period-separator">
+          -
+        </span>
+
+        {Number(series.completedIssueYear) &&
+        Number(series.completedIssue) ? (
+          <IssueLabel
+            magazine={magazine}
+            year={Number(series.completedIssueYear)}
+            issue={Number(series.completedIssue)}
+          />
+        ) : (
+          <span>連載中</span>
+        )}
+      </>
+    )
+  }
+
+  const selectedTimelineMagazine =
+    selectedTimelineSeries
+      ? getSeriesMagazine(selectedTimelineSeries)
+      : null
+  const selectedTimelineAuthorSearchParam =
+    selectedTimelineSeries
+      ? buildAuthorSearchParam(
+          selectedTimelineSeries
+        )
+      : ''
+  const selectedTimelineAuthorNames =
+    selectedTimelineSeries
+      ? getSeriesAuthorNames(
+          selectedTimelineSeries
+        )
+      : []
+
+  const closeTimelineSeriesCard = () => {
+    setSelectedTimelineSeries(null)
+  }
+
+  const openAuthorSeries = () => {
+    if (
+      !selectedTimelineSeries ||
+      !selectedTimelineAuthorSearchParam
+    ) {
+      return
+    }
+
+    closeTimelineSeriesCard()
+
+    if (selectedTimelineAuthorNames.length > 1) {
+      navigate(
+        `/authors/select/${selectedTimelineSeries.id}`
+      )
+      return
+    }
+
+    navigate(
+      `/authors?q=${encodeURIComponent(
+        selectedTimelineAuthorSearchParam
+      )}`
+    )
+  }
+
   const closeMenus = () => {
     setIsViewModeMenuOpen(false)
     setIsMagazineMenuOpen(false)
@@ -362,11 +625,11 @@ function TimelinePage({
                           type="button"
                           className={`timeline-event-card timeline-event-${event.type}`}
                           key={`${event.type}-${event.series.id}-${event.year}-${event.issue}`}
-                          onClick={() =>
-                            navigate(
-                              `/series/${event.series.id}`
+                          onClick={() => {
+                            setSelectedTimelineSeries(
+                              event.series
                             )
-                          }
+                          }}
                         >
                           <div className="timeline-event-cover">
                             <ImageView
@@ -394,6 +657,30 @@ function TimelinePage({
                               {event.series.title}
                             </div>
 
+                            <div className="timeline-event-period">
+                              <span className="timeline-event-period-label">
+                                掲載範囲
+                              </span>
+
+                              {renderSeriesIssueRange(
+                                event.series,
+                                event.magazine
+                              )}
+                            </div>
+
+                            <div className="timeline-event-period">
+                              <span className="timeline-event-period-label">
+                                期間
+                              </span>
+
+                              <span>
+                                {getSeriesPeriodText(
+                                  event.series,
+                                  event.magazine
+                                )}
+                              </span>
+                            </div>
+
                             {isAllMagazines && (
                               <div className="timeline-event-magazine">
                                 {event.magazine?.name ||
@@ -411,6 +698,131 @@ function TimelinePage({
           </section>
         ))}
       </div>
+
+      {selectedTimelineSeries && (
+        <div
+          className="timeline-series-card-backdrop"
+          onClick={closeTimelineSeriesCard}
+        >
+          <div
+            className="timeline-series-card"
+            onClick={(event) => {
+              event.stopPropagation()
+            }}
+          >
+            <div className="timeline-series-card-cover">
+              <ImageView
+                imageId={selectedTimelineSeries.imageId}
+                fallbackImage={
+                  selectedTimelineSeries.image
+                }
+              />
+            </div>
+
+            <div className="timeline-series-card-main">
+              <div className="timeline-series-card-title">
+                {selectedTimelineSeries.title}
+              </div>
+
+              <div className="timeline-series-card-magazine">
+                {selectedTimelineMagazine?.name ||
+                  '雑誌なし'}
+              </div>
+
+              <div className="timeline-series-card-row timeline-series-card-row-wide timeline-series-author-row">
+                <div className="timeline-series-author-header">
+                  <span>作者</span>
+
+                  {selectedTimelineAuthorSearchParam && (
+                    <button
+                      type="button"
+                      className="timeline-series-author-button"
+                      onClick={openAuthorSeries}
+                    >
+                      同作者作品
+                    </button>
+                  )}
+                </div>
+
+                <strong>
+                  {getSeriesAuthorText(
+                    selectedTimelineSeries
+                  )}
+                </strong>
+              </div>
+
+              <div className="timeline-series-card-row">
+                <span>掲載範囲</span>
+
+                <strong>
+                  {renderSeriesIssueRange(
+                    selectedTimelineSeries,
+                    selectedTimelineMagazine
+                  )}
+                </strong>
+              </div>
+
+              <div className="timeline-series-card-row">
+                <span>連載期間</span>
+
+                <strong>
+                  {getSeriesPeriodText(
+                    selectedTimelineSeries,
+                    selectedTimelineMagazine
+                  )}
+                </strong>
+              </div>
+
+              <div className="timeline-series-card-row">
+                <span>状態</span>
+
+                <strong>
+                  {getSeriesStatusText(
+                    selectedTimelineSeries
+                  )}
+                </strong>
+              </div>
+
+              <div className="timeline-series-card-row">
+                <span>読了号</span>
+
+                <strong>
+                  {renderSeriesReadIssue(
+                    selectedTimelineSeries,
+                    selectedTimelineMagazine
+                  )}
+                </strong>
+              </div>
+
+              {selectedTimelineMagazine?.frequency ===
+                'weekly' && (
+                <div className="timeline-series-card-row">
+                  <span>掲載ペース</span>
+
+                  <strong>
+                    {getSeriesPublicationPaceLabel(
+                      selectedTimelineSeries.publicationPace
+                    )}
+                  </strong>
+                </div>
+              )}
+
+              {selectedTimelineMagazine?.frequency ===
+                'harta' && (
+                <div className="timeline-series-card-row">
+                  <span>掲載区分</span>
+
+                  <strong>
+                    {getHartaGroupLabel(
+                      selectedTimelineSeries.hartaGroup
+                    )}
+                  </strong>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {(isViewModeMenuOpen ||
         isMagazineMenuOpen) && (

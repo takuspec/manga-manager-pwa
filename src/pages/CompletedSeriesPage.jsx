@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom'
 import ImageView from '../components/ImageView'
 import IssueLabel from '../components/IssueLabel'
 import HartaGroupBadge from '../components/HartaGroupBadge'
+import SeriesInfoCard from '../components/SeriesInfoCard'
 import {
   formatIssueSpanPeriod,
   getIssueSpanCount
@@ -55,6 +56,11 @@ function CompletedSeriesPage({
 
   const [viewMode, setViewMode] =
     useState('grid')
+
+  const [
+    selectedInfoSeries,
+    setSelectedInfoSeries
+  ] = useState(null)
 
   const [
     isViewModeMenuOpen,
@@ -403,6 +409,9 @@ function CompletedSeriesPage({
               <div
                 className="completed-series-list-card"
                 key={item.id}
+                onClick={() => {
+                  setSelectedInfoSeries(item)
+                }}
               >
                 <div className="series-cover-small">
                   <ImageView
@@ -450,6 +459,9 @@ function CompletedSeriesPage({
               <div
                 className="card completed-grid-card"
                 key={item.id}
+                onClick={() => {
+                  setSelectedInfoSeries(item)
+                }}
               >
 
                 <div className="cover">
@@ -626,6 +638,17 @@ function CompletedSeriesPage({
           </button>
         </div>
       </div>
+
+      {selectedInfoSeries && (
+        <SeriesInfoCard
+          series={selectedInfoSeries}
+          magazineList={magazineList}
+          navigate={navigate}
+          onClose={() => {
+            setSelectedInfoSeries(null)
+          }}
+        />
+      )}
 
     </div>
   )

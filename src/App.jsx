@@ -31,6 +31,8 @@ import {
 
 const SERIES_SORT_SETTINGS_KEY =
   'manga-manager-series-sort-settings'
+const SERIES_VISIBILITY_SETTINGS_KEY =
+  'manga-manager-series-visibility-settings'
 
 const primarySeriesSortModeValues = [
   'unread',
@@ -115,6 +117,45 @@ const getInitialSeriesSortSettings = () => {
   }
 }
 
+const defaultSeriesVisibilitySettings = {
+  showCompleted: true,
+  showUnreadZeroOngoing: true
+}
+
+const normalizeSeriesVisibilitySettings = (value) => {
+  const source =
+    value && typeof value === 'object'
+      ? value
+      : {}
+
+  return {
+    showCompleted:
+      typeof source.showCompleted === 'boolean'
+        ? source.showCompleted
+        : defaultSeriesVisibilitySettings.showCompleted,
+    showUnreadZeroOngoing:
+      typeof source.showUnreadZeroOngoing === 'boolean'
+        ? source.showUnreadZeroOngoing
+        : defaultSeriesVisibilitySettings.showUnreadZeroOngoing
+  }
+}
+
+const getInitialSeriesVisibilitySettings = () => {
+  try {
+    const rawValue =
+      localStorage.getItem(
+        SERIES_VISIBILITY_SETTINGS_KEY
+      )
+
+    return normalizeSeriesVisibilitySettings(
+      rawValue ? JSON.parse(rawValue) : null
+    )
+  } catch (error) {
+    console.error(error)
+    return defaultSeriesVisibilitySettings
+  }
+}
+
 function App() {
   const navigate = useNavigate()
 
@@ -173,13 +214,50 @@ function App() {
     )
   }
 
-  const [showCompleted, setShowCompleted] =
-    useState(true)
-
   const [
-    showUnreadZeroOngoing,
-    setShowUnreadZeroOngoing
-  ] = useState(true)
+    seriesVisibilitySettings,
+    setSeriesVisibilitySettings
+  ] = useState(getInitialSeriesVisibilitySettings)
+
+  const {
+    showCompleted,
+    showUnreadZeroOngoing
+  } = seriesVisibilitySettings
+
+  const updateSeriesVisibilitySettings = (patch) => {
+    setSeriesVisibilitySettings((prev) => {
+      const next =
+        normalizeSeriesVisibilitySettings({
+          ...prev,
+          ...patch
+        })
+
+      localStorage.setItem(
+        SERIES_VISIBILITY_SETTINGS_KEY,
+        JSON.stringify(next)
+      )
+
+      return next
+    })
+  }
+
+  const setShowCompleted = (value) => {
+    updateSeriesVisibilitySettings({
+      showCompleted:
+        typeof value === 'function'
+          ? value(showCompleted)
+          : value
+    })
+  }
+
+  const setShowUnreadZeroOngoing = (value) => {
+    updateSeriesVisibilitySettings({
+      showUnreadZeroOngoing:
+        typeof value === 'function'
+          ? value(showUnreadZeroOngoing)
+          : value
+    })
+  }
 
   const [menuSeriesId, setMenuSeriesId] =
     useState(null)

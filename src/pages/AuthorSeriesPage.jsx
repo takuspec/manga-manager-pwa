@@ -1,6 +1,8 @@
 import { useSearchParams } from 'react-router-dom'
+import { useState } from 'react'
 import ImageView from '../components/ImageView'
 import IssueLabel from '../components/IssueLabel'
+import SeriesInfoCard from '../components/SeriesInfoCard'
 import {
   formatIssueSpanPeriod,
   getEstimatedLatestIssueInfo,
@@ -17,6 +19,10 @@ function AuthorSeriesPage({
   seriesList,
   navigate
 }) {
+  const [
+    selectedInfoSeries,
+    setSelectedInfoSeries
+  ] = useState(null)
   const [searchParams] = useSearchParams()
   const authorParam =
     searchParams.get('q') || ''
@@ -177,9 +183,9 @@ function AuthorSeriesPage({
               type="button"
               className="completed-series-list-card author-series-card"
               key={series.id}
-              onClick={() =>
-                navigate(`/series/${series.id}`)
-              }
+              onClick={() => {
+                setSelectedInfoSeries(series)
+              }}
             >
               <div className="series-cover-small">
                 <ImageView
@@ -232,6 +238,17 @@ function AuthorSeriesPage({
           )
         })}
       </div>
+
+      {selectedInfoSeries && (
+        <SeriesInfoCard
+          series={selectedInfoSeries}
+          magazineList={magazineList}
+          navigate={navigate}
+          onClose={() => {
+            setSelectedInfoSeries(null)
+          }}
+        />
+      )}
     </div>
   )
 }
