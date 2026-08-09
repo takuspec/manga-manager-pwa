@@ -1,0 +1,1 @@
+if('serviceWorker' in navigator) {window.addEventListener('load', () => {navigator.serviceWorker.register('/manga-manager-pwa/sw.js', { scope: '/manga-manager-pwa/' })})}
