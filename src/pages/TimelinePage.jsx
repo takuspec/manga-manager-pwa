@@ -8,7 +8,9 @@ import IssueLabel from '../components/IssueLabel'
 import {
   formatIssueSpanPeriod,
   getEstimatedLatestIssueInfo,
+  getHartaYearMonthFromVolume,
   getIssueSpanCount,
+  getIssueSerial,
   getSeriesPublicationPaceLabel
 } from '../utils/issueUtils'
 import { getHartaGroupLabel } from '../utils/hartaGroups'
@@ -54,6 +56,41 @@ const getTouchDistance = (touches) => {
     first.clientY - second.clientY
 
   return Math.sqrt(diffX * diffX + diffY * diffY)
+}
+
+const getTimelineIssueInfo = (
+  magazine,
+  year,
+  issue
+) => {
+  const numericIssue =
+    Number(issue) || 0
+
+  if (
+    magazine?.frequency === 'harta' &&
+    numericIssue
+  ) {
+    return {
+      year:
+        getHartaYearMonthFromVolume(
+          numericIssue
+        ).year,
+      issue: numericIssue
+    }
+  }
+
+  return {
+    year: Number(year) || 0,
+    issue: numericIssue
+  }
+}
+
+const getTimelineEventSortValue = (event) => {
+  return getIssueSerial(
+    event.year,
+    event.issue,
+    event.magazine
+  )
 }
 
 function TimelinePage({
@@ -161,11 +198,18 @@ function TimelinePage({
           Number(series.startIssueYear) &&
           Number(series.startIssue)
         ) {
+          const issueInfo =
+            getTimelineIssueInfo(
+              magazine,
+              series.startIssueYear,
+              series.startIssue
+            )
+
           events.push({
             type: 'start',
             label: '開始',
-            year: Number(series.startIssueYear),
-            issue: Number(series.startIssue),
+            year: issueInfo.year,
+            issue: issueInfo.issue,
             series,
             magazine
           })
@@ -175,11 +219,18 @@ function TimelinePage({
           Number(series.completedIssueYear) &&
           Number(series.completedIssue)
         ) {
+          const issueInfo =
+            getTimelineIssueInfo(
+              magazine,
+              series.completedIssueYear,
+              series.completedIssue
+            )
+
           events.push({
             type: 'end',
             label: '終了',
-            year: Number(series.completedIssueYear),
-            issue: Number(series.completedIssue),
+            year: issueInfo.year,
+            issue: issueInfo.issue,
             series,
             magazine
           })
@@ -189,9 +240,8 @@ function TimelinePage({
       })
       .sort((a, b) => {
         const issueResult =
-          a.year * 100 +
-          a.issue -
-          (b.year * 100 + b.issue)
+          getTimelineEventSortValue(a) -
+          getTimelineEventSortValue(b)
 
         if (issueResult !== 0) {
           return issueResult
@@ -227,7 +277,7 @@ function TimelinePage({
   const groupEventsByIssue = (events) => {
     return events.reduce((groups, event) => {
       const issueKey =
-        `${event.year}-${event.issue}`
+        `${event.magazine?.id || 'unknown'}-${event.year}-${event.issue}`
       const lastGroup =
         groups[groups.length - 1]
 
@@ -615,7 +665,11 @@ function TimelinePage({
                   >
                     {timelineViewMode === 'grid' && (
                       <div className="timeline-issue-heading">
-                        {issueGroup.issue}号
+                        <IssueLabel
+                          magazine={issueGroup.magazine}
+                          year={issueGroup.year}
+                          issue={issueGroup.issue}
+                        />
                       </div>
                     )}
 
