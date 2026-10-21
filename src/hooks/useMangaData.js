@@ -1526,78 +1526,6 @@ function useMangaData({
     )
   }
 
-  const bulkAddIssue = (magazineId) => {
-    setSeriesList((prevList) =>
-      prevList.map((item) => {
-        if (
-          item.magazineId !== magazineId ||
-          item.status !== 'ongoing'
-        ) {
-          return item
-        }
-
-        const magazine =
-          getSeriesMagazine(item)
-
-        if (!magazine) {
-          return item
-        }
-
-        const next =
-          getNextReadIssueForSeries(
-            item,
-            magazine
-          )
-
-        if (!next) {
-          return item
-        }
-
-        return {
-          ...item,
-          issueYear: next.year,
-          issue: next.issue
-        }
-      })
-    )
-  }
-
-  const bulkMinusIssue = (magazineId) => {
-    setSeriesList((prevList) =>
-      prevList.map((item) => {
-        if (
-          item.magazineId !== magazineId ||
-          item.status !== 'ongoing'
-        ) {
-          return item
-        }
-
-        const magazine =
-          getSeriesMagazine(item)
-
-        if (!magazine) {
-          return item
-        }
-
-        const prev =
-          getPrevReadIssueForSeries(
-            item,
-            magazine
-          )
-
-        if (!prev) {
-          return item
-        }
-
-        return {
-          ...item,
-          issueYear: prev.year,
-          issue: prev.issue
-        }
-      })
-    )
-  }
-
   const bulkAddIssueByHartaGroups = (
     magazineId,
     selectedGroups = []
@@ -2281,8 +2209,6 @@ function useMangaData({
     updateCompletedIssueDirect,
     addIssue,
     minusIssue,
-    bulkAddIssue,
-    bulkMinusIssue,
     bulkAddIssueByHartaGroups,
     bulkMinusIssueByHartaGroups,
     toggleStatus,

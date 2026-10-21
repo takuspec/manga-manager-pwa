@@ -101,8 +101,6 @@ function MagazineSeriesPage({
   getEstimatedLatestIssue,
   addIssue,
   minusIssue,
-  bulkAddIssue,
-  bulkMinusIssue,
   bulkAddIssueByHartaGroups,
   bulkMinusIssueByHartaGroups,
   bulkChangeSelectedIssue,
@@ -1166,7 +1164,7 @@ function MagazineSeriesPage({
 
             )}
 
-            {isHarta ? (
+            {isHarta && (
               <div className="harta-group-bulk-actions">
                 {HARTA_GROUP_OPTIONS.map((option) => {
                   const isSelected =
@@ -1207,28 +1205,6 @@ function MagazineSeriesPage({
                 >
                   -1
                 </button>
-              </div>
-            ) : (
-              <div className="series-tool-row">
-
-            <button
-              className="bulk-button"
-              onClick={() =>
-                bulkAddIssue(magazineId)
-              }
-            >
-              全連載 +1
-            </button>
-
-            <button
-              className="minus-button"
-              onClick={() =>
-                bulkMinusIssue(magazineId)
-              }
-            >
-              全連載 -1
-            </button>
-
               </div>
             )}
           </>
