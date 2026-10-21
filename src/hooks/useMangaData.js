@@ -193,6 +193,8 @@ function normalizeSeriesItem(item) {
     artAuthor: item.artAuthor || '',
     scriptAuthor: item.scriptAuthor || '',
     status: normalizeSeriesStatus(item.status),
+    excludeFromMagazineUnread:
+      item.excludeFromMagazineUnread === true,
     completedIssueYear:
       hasCompletedIssueYear &&
       item.completedIssueYear
@@ -1366,27 +1368,6 @@ function useMangaData({
     )
   }
 
-  const updateWeeklyIssueRules = (
-    magazineId,
-    rules
-  ) => {
-    setMagazineList((prevList) =>
-      prevList.map((magazine) => {
-        if (magazine.id !== magazineId) {
-          return magazine
-        }
-
-        return {
-          ...magazine,
-          weeklyIssueRules: {
-            ...(magazine.weeklyIssueRules || {}),
-            ...rules
-          }
-        }
-      })
-    )
-  }
-
   const updateWeeklyMergedIssues = (
     magazineId,
     year,
@@ -1728,6 +1709,20 @@ function useMangaData({
           issue: prev.issue
         }
       })
+    )
+  }
+
+  const toggleMagazineUnreadExclusion = (id) => {
+    setSeriesList((prevList) =>
+      prevList.map((item) =>
+        item.id === id
+          ? {
+              ...item,
+              excludeFromMagazineUnread:
+                !item.excludeFromMagazineUnread
+            }
+          : item
+      )
     )
   }
 
@@ -2291,6 +2286,7 @@ function useMangaData({
     bulkAddIssueByHartaGroups,
     bulkMinusIssueByHartaGroups,
     toggleStatus,
+    toggleMagazineUnreadExclusion,
     updateStatus,
     toggleSeriesSelection,
     bulkChangeSelectedIssue,
@@ -2300,7 +2296,6 @@ function useMangaData({
     backupData,
     importData,
     updateWeeklyIssueRule,
-    updateWeeklyIssueRules,
     updateWeeklyMergedIssues,
     toggleWeeklyMergedIssue,
     updateHartaGroupDirect,

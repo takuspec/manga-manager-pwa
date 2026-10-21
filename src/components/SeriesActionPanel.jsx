@@ -7,6 +7,7 @@ function SeriesActionPanel({
   item,
   navigate,
   toggleStatus,
+  toggleMagazineUnreadExclusion,
   updateStatus,
   deleteSeries,
   className = '',
@@ -61,6 +62,21 @@ function SeriesActionPanel({
           }}
         >
           同作者の作品
+        </button>
+      )}
+
+      {toggleMagazineUnreadExclusion && (
+        <button
+          type="button"
+          aria-pressed={!!item.excludeFromMagazineUnread}
+          onClick={() => {
+            toggleMagazineUnreadExclusion(item.id)
+            onClose?.()
+          }}
+        >
+          {item.excludeFromMagazineUnread
+            ? '雑誌の未読数に含める'
+            : '雑誌の未読数から除外する'}
         </button>
       )}
 

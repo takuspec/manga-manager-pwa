@@ -108,6 +108,7 @@ function MagazineSeriesPage({
   bulkChangeSelectedIssue,
   toggleSeriesSelection,
   toggleStatus,
+  toggleMagazineUnreadExclusion,
   updateStatus,
   deleteSeries,
   navigate,
@@ -1345,6 +1346,7 @@ function MagazineSeriesPage({
                   item={item}
                   navigate={navigate}
                   toggleStatus={toggleStatus}
+                  toggleMagazineUnreadExclusion={toggleMagazineUnreadExclusion}
                   updateStatus={updateStatus}
                   deleteSeries={
                     deleteSeriesAndRestorePosition
@@ -1447,6 +1449,7 @@ function MagazineSeriesPage({
                     item={item}
                     navigate={navigate}
                     toggleStatus={toggleStatus}
+                    toggleMagazineUnreadExclusion={toggleMagazineUnreadExclusion}
                     updateStatus={updateStatus}
                     deleteSeries={
                       deleteSeriesAndRestorePosition
@@ -1627,6 +1630,7 @@ function MagazineSeriesPage({
                     item={expandedGridItem}
                     navigate={navigate}
                     toggleStatus={toggleStatus}
+                    toggleMagazineUnreadExclusion={toggleMagazineUnreadExclusion}
                     updateStatus={updateStatus}
                     deleteSeries={
                       deleteSeriesAndRestorePosition
