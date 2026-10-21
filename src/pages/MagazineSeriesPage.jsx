@@ -1695,9 +1695,6 @@ function MagazineSeriesPage({
           }
         >
           <span>未読ありだけ</span>
-          <span className="visibility-switch-state" aria-hidden="true">
-            {showUnreadZeroOngoing ? 'OFF' : 'ON'}
-          </span>
         </button>
 
         <button
@@ -1712,9 +1709,6 @@ function MagazineSeriesPage({
           }
         >
           <span>完結も表示</span>
-          <span className="visibility-switch-state" aria-hidden="true">
-            {showCompleted ? 'ON' : 'OFF'}
-          </span>
         </button>
 
       </div>

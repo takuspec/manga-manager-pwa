@@ -226,6 +226,7 @@ function MagazineListPage({
       </div>
 
       <DataActionMenu
+        onAddMagazine={() => setIsAddMagazineOpen(true)}
         onBackupData={onBackupData}
         onImportData={onImportData}
         onWeeklySettings={() =>
@@ -233,16 +234,6 @@ function MagazineListPage({
         }
       />
       </div>
-
-      <button
-        type="button"
-        className="magazine-add-toggle"
-        aria-expanded={isAddMagazineOpen}
-        aria-controls="magazine-add-form"
-        onClick={() => setIsAddMagazineOpen((isOpen) => !isOpen)}
-      >
-        {isAddMagazineOpen ? '雑誌追加を閉じる' : '＋ 雑誌追加'}
-      </button>
 
       {isAddMagazineOpen && (
         <form
@@ -271,6 +262,9 @@ function MagazineListPage({
 
           <button type="submit" disabled={!newMagazineName.trim()}>
             追加
+          </button>
+          <button type="button" onClick={() => setIsAddMagazineOpen(false)}>
+            閉じる
           </button>
 
         </form>
