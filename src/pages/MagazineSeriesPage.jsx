@@ -40,11 +40,6 @@ const viewModeLabelMap = {
   grid: 'グリッド'
 }
 
-const unreadZeroLabelMap = {
-  true: '未読0を非表示',
-  false: '未読0を表示'
-}
-
 const sortOptions = [
   {
     value: 'unread',
@@ -294,18 +289,7 @@ function MagazineSeriesPage({
       return true
     }
 
-    if (item.status === 'completed') {
-      return false
-    }
-
-    if (item.status === 'paused') {
-      return false
-    }
-
-    return !(
-      item.status === 'ongoing' &&
-      getUnreadCount(item) === 0
-    )
+    return getUnreadCount(item) > 0
   }
 
   const shouldShowByHartaGroup = (item) => {
@@ -1701,29 +1685,36 @@ function MagazineSeriesPage({
 
         <button
           type="button"
+          role="switch"
+          aria-checked={!showUnreadZeroOngoing}
+          className="series-visibility-switch"
           onClick={() =>
             setShowUnreadZeroOngoing(
               !showUnreadZeroOngoing
             )
           }
         >
-          {
-            unreadZeroLabelMap[
-              String(showUnreadZeroOngoing)
-            ]
-          }
+          <span>未読ありだけ</span>
+          <span className="visibility-switch-state" aria-hidden="true">
+            {showUnreadZeroOngoing ? 'OFF' : 'ON'}
+          </span>
         </button>
 
         <button
+          type="button"
+          role="switch"
+          aria-checked={showCompleted}
+          className="series-visibility-switch"
           onClick={() =>
             setShowCompleted(
               !showCompleted
             )
           }
         >
-          {showCompleted
-            ? '完結を非表示'
-            : '完結を表示'}
+          <span>完結も表示</span>
+          <span className="visibility-switch-state" aria-hidden="true">
+            {showCompleted ? 'ON' : 'OFF'}
+          </span>
         </button>
 
       </div>
