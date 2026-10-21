@@ -11,7 +11,6 @@ import {
 function WeeklyIssueRulesPage({
   magazineList,
   updateWeeklyIssueRule,
-  updateWeeklyIssueRules,
   navigate
 }) {
   const params = useParams()
@@ -30,19 +29,6 @@ function WeeklyIssueRulesPage({
     magazineList.find((item) => {
       return item.id === magazineId
     })
-
-  const applyAll = (finalIssue) => {
-    const rules = {}
-
-    years.forEach((year) => {
-      rules[year] = finalIssue
-    })
-
-    updateWeeklyIssueRules(
-      magazineId,
-      rules
-    )
-  }
 
   if (
     !magazine ||
@@ -93,25 +79,6 @@ function WeeklyIssueRulesPage({
         >
           今年へ
         </button>
-      </div>
-
-      <div className="weekly-bulk-box">
-        <div className="weekly-bulk-buttons">
-          <button
-            type="button"
-            onClick={() => applyAll(52)}
-          >
-            全て52号
-          </button>
-
-          <button
-            type="button"
-            onClick={() => applyAll(53)}
-          >
-            全て53号
-          </button>
-        </div>
-
       </div>
 
       <div className="weekly-year-list">

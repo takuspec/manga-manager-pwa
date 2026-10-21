@@ -272,7 +272,9 @@ function MagazineListPage({
               (total, item) => {
                 return (
                   total +
-                  getUnreadCount(item)
+                  (item.excludeFromMagazineUnread
+                    ? 0
+                    : getUnreadCount(item))
                 )
               },
               0

@@ -367,6 +367,7 @@ function App() {
     bulkAddIssueByHartaGroups,
     bulkMinusIssueByHartaGroups,
     toggleStatus,
+    toggleMagazineUnreadExclusion,
     updateStatus,
     toggleSeriesSelection,
     bulkChangeSelectedIssue,
@@ -375,7 +376,6 @@ function App() {
     backupData,
     importData,
     updateWeeklyIssueRule,
-    updateWeeklyIssueRules,
     updateWeeklyMergedIssues,
     toggleWeeklyMergedIssue,
     handleImageUpload
@@ -568,6 +568,7 @@ function App() {
               toggleSeriesSelection
             }
             toggleStatus={toggleStatus}
+            toggleMagazineUnreadExclusion={toggleMagazineUnreadExclusion}
             updateStatus={updateStatus}
             deleteSeries={deleteSeries}
             navigate={navigate}
@@ -662,9 +663,6 @@ function App() {
             magazineList={magazineList}
             updateWeeklyIssueRule={
               updateWeeklyIssueRule
-            }
-            updateWeeklyIssueRules={
-              updateWeeklyIssueRules
             }
             navigate={navigate}
           />
