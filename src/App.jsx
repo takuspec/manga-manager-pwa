@@ -362,8 +362,6 @@ function App() {
     updateCompletedIssueDirect,
     addIssue,
     minusIssue,
-    bulkAddIssue,
-    bulkMinusIssue,
     bulkAddIssueByHartaGroups,
     bulkMinusIssueByHartaGroups,
     toggleStatus,
@@ -553,8 +551,6 @@ function App() {
             }
             addIssue={addIssue}
             minusIssue={minusIssue}
-            bulkAddIssue={bulkAddIssue}
-            bulkMinusIssue={bulkMinusIssue}
             bulkAddIssueByHartaGroups={
               bulkAddIssueByHartaGroups
             }
