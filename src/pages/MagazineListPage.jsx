@@ -19,6 +19,8 @@ function MagazineListPage({
   moveMagazine,
   navigate
 }) {
+  const [isAddMagazineOpen, setIsAddMagazineOpen] = useState(false)
+
   const [
     draggingMagazineId,
     setDraggingMagazineId
@@ -232,24 +234,47 @@ function MagazineListPage({
       />
       </div>
 
-      <div className="magazine-add-row">
+      <button
+        type="button"
+        className="magazine-add-toggle"
+        aria-expanded={isAddMagazineOpen}
+        aria-controls="magazine-add-form"
+        onClick={() => setIsAddMagazineOpen((isOpen) => !isOpen)}
+      >
+        {isAddMagazineOpen ? '雑誌追加を閉じる' : '＋ 雑誌追加'}
+      </button>
 
-        <input
-          type="text"
-          placeholder="新規雑誌を入力"
-          value={newMagazineName}
-          onChange={(e) =>
-            setNewMagazineName(
-              e.target.value
-            )
-          }
-        />
+      {isAddMagazineOpen && (
+        <form
+          id="magazine-add-form"
+          className="magazine-add-row"
+          onSubmit={(event) => {
+            event.preventDefault()
+            if (!newMagazineName.trim()) return
+            addMagazine()
+            setIsAddMagazineOpen(false)
+          }}
+        >
 
-        <button onClick={addMagazine}>
-          雑誌追加
-        </button>
+          <input
+            type="text"
+            aria-label="新しい雑誌名"
+            autoFocus
+            placeholder="新規雑誌を入力"
+            value={newMagazineName}
+            onChange={(e) =>
+              setNewMagazineName(
+                e.target.value
+              )
+            }
+          />
 
-      </div>
+          <button type="submit" disabled={!newMagazineName.trim()}>
+            追加
+          </button>
+
+        </form>
+      )}
 
       <div className="magazine-list">
 
