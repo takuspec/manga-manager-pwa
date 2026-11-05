@@ -375,6 +375,14 @@ function SeriesEdit({
         <div className="edit-title">
           作品編集
         </div>
+
+        <button
+          type="button"
+          className="header-save-button"
+          onClick={handleSave}
+        >
+          保存
+        </button>
       </div>
 
       <div className="edit-page">
@@ -624,12 +632,7 @@ function SeriesEdit({
           />
         )}
 
-        <button
-          className="save-button"
-          onClick={handleSave}
-        >
-          保存
-        </button>
+
 
       </div>
     </div>

@@ -1,3 +1,5 @@
+import AppIcon from '../components/AppIcon'
+import { formatSeriesAuthorEntries } from '../utils/authorUtils'
 import {
   Fragment,
   useEffect,
@@ -417,6 +419,10 @@ function MagazineSeriesPage({
         <div className={baseClassName}>
           {content}
         </div>
+
+        {item.excludeFromMagazineUnread && (
+          <span className="series-exclusion-badge">集計対象外</span>
+        )}
 
         <div className="series-period-badge">
           {formatSeriesPeriod(item)}
@@ -979,19 +985,9 @@ function MagazineSeriesPage({
 
         </div>
 
-        <div
-          className="latest-issue-box"
-          onClick={() =>
-            setShowSeriesControls(
-              !showSeriesControls
-            )
-          }
-        >
-          <span>
-            {showSeriesControls
-              ? '最新号'
-              : '最新号'}
-          </span>
+        <div className="latest-issue-box">
+          <div className="latest-issue-summary">
+          <span>最新号（推定）</span>
 
           <strong>
             <IssueLabel
@@ -1000,11 +996,17 @@ function MagazineSeriesPage({
               issue={estimatedLatestIssue.issue}
             />
           </strong>
+          </div>
+          <button type="button" className="sort-toggle"
+            aria-expanded={showSeriesControls} aria-controls="series-display-controls"
+            onClick={() => setShowSeriesControls((isOpen) => !isOpen)}>
+            <AppIcon name="sort" size={16} /> 並び替え
+          </button>
         </div>
 
         {showSeriesControls && (
           <>
-            <div className="sort-controls">
+            <div className="sort-controls" id="series-display-controls">
               <div className="sort-row sort-row-with-button">
                 <select
                   value={sortMode}
@@ -1201,6 +1203,10 @@ function MagazineSeriesPage({
         ref={seriesScrollRef}
       >
 
+      {displaySeries.length === 0 && createSortedSeries().length === 0 && (
+        <div className="empty-message">表示する作品がありません。作品の追加、または表示条件を確認してください。</div>
+      )}
+
       {currentViewMode === 'list' && currentShowImages ? (
 
         displaySeries.map((item) => {
@@ -1250,6 +1256,9 @@ function MagazineSeriesPage({
                 <div className="series-title">
                   {item.title}
                 </div>
+                {formatSeriesAuthorEntries(item) && (
+                  <div className="series-author">{formatSeriesAuthorEntries(item)}</div>
+                )}
 
                 <div className="series-issue issue-display-row">
                   <span className="issue-display-label">
@@ -1283,6 +1292,11 @@ function MagazineSeriesPage({
                   e.stopPropagation()
                 }
               >
+                <button type="button" className="series-more-button"
+                  aria-label={`${item.title}の作品メニュー`}
+                  onClick={() => setMenuSeriesId(item.id)}>
+                  <AppIcon name="more" size={18} />
+                </button>
                 <button
                   onClick={() =>
                     addIssue(item.id)
@@ -1358,6 +1372,9 @@ function MagazineSeriesPage({
                   <div className="series-compact-title">
                     {item.title}
                   </div>
+                  {formatSeriesAuthorEntries(item) && (
+                    <div className="series-compact-author">{formatSeriesAuthorEntries(item)}</div>
+                  )}
 
                   <div className="series-compact-meta">
                     <span>
@@ -1384,6 +1401,14 @@ function MagazineSeriesPage({
                 </div>
 
                 <div className="series-compact-buttons">
+                  <button type="button" className="series-more-button"
+                    aria-label={`${item.title}の作品メニュー`}
+                    onClick={(event) => {
+                      event.stopPropagation()
+                      setMenuSeriesId(item.id)
+                    }}>
+                    <AppIcon name="more" size={18} />
+                  </button>
                   <button
                     className="minus-button"
                     onClick={(e) => {

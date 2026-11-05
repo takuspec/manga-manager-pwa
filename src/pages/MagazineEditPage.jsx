@@ -190,6 +190,27 @@ function MagazineEditPage({
           雑誌編集
         </div>
 
+        <button
+          type="button"
+          className="header-save-button"
+          onClick={async () => {
+            await saveMagazineEdit(
+              magazine.id,
+              editMagazineName,
+              editFrequency,
+              editReleaseDay,
+              editReleaseDate,
+              editCurrentIssueYear,
+              Number(editCurrentIssue),
+              editMagazineImageBlob,
+              magazine.imageId
+            )
+            navigate(-1)
+          }}
+        >
+          保存
+        </button>
+
       </div>
 
       <div className="edit-page">
@@ -373,25 +394,7 @@ function MagazineEditPage({
 
         </div>
 
-        <button
-          className="save-button"
-          onClick={async () => {
-            await saveMagazineEdit(
-              magazine.id,
-              editMagazineName,
-              editFrequency,
-              editReleaseDay,
-              editReleaseDate,
-              editCurrentIssueYear,
-              Number(editCurrentIssue),
-              editMagazineImageBlob,
-              magazine.imageId
-            )
-            navigate(-1)
-          }}
-        >
-          保存
-        </button>
+
 
         <button
           className="delete-button"

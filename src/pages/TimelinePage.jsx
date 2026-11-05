@@ -109,7 +109,7 @@ function TimelinePage({
   const [
     timelineViewMode,
     setTimelineViewMode
-  ] = useState('grid')
+  ] = useState('list')
 
   const [
     timelineGridScale,

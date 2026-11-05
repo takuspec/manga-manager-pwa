@@ -6,6 +6,7 @@ import {
   useParams
 } from 'react-router-dom'
 import './App.css'
+import './design.css'
 
 import MagazineListPage from './pages/MagazineListPage'
 import MagazineSeriesPage from './pages/MagazineSeriesPage'

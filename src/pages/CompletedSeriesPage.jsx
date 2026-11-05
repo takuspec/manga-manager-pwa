@@ -55,7 +55,7 @@ function CompletedSeriesPage({
     useState('asc')
 
   const [viewMode, setViewMode] =
-    useState('grid')
+    useState('list')
 
   const [
     selectedInfoSeries,

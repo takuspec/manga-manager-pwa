@@ -1,3 +1,4 @@
+import AppIcon from './AppIcon'
 import { useRef, useState } from 'react'
 
 function DataActionMenu({
@@ -97,12 +98,13 @@ function DataActionMenu({
       <button
         type="button"
         className="page-settings-button"
-        aria-label="データメニュー"
+        aria-label="オプション"
+        aria-expanded={isOpen}
         onClick={() =>
           setIsOpen(!isOpen)
         }
       >
-        ⚙
+        <AppIcon name="settings" />
       </button>
 
       {isOpen && (

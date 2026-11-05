@@ -1,0 +1,138 @@
+/* Visual system: image dimensions and image storage remain in App.css / ImageView. */
+:root {
+  color-scheme: dark;
+  --canvas: #0b1220;
+  --surface: #111c2e;
+  --surface-raised: #172438;
+  --line: #2a3950;
+  --text: #eef3fb;
+  --muted: #9aaac1;
+  --accent: #6cbcff;
+}
+#root { text-align: left; border-color: transparent; }
+body { background: #070d17; color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans JP', sans-serif; }
+.app { background: var(--canvas); }
+button, input, select, textarea { font: inherit; }
+button { min-height: 44px; border: 1px solid transparent; border-radius: 10px; background: #2267c7; font-size: 13px; font-weight: 650; transition: background .15s, border-color .15s; }
+button:disabled { cursor: default; opacity: .45; }
+button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+input, select, textarea { background: #0c1728; border: 1px solid var(--line); border-radius: 9px; }
+button svg { flex-shrink: 0; vertical-align: middle; }
+.title, .edit-title { font-weight: 750; letter-spacing: .02em; }
+.page-title-row { padding: 6px 0 18px; border-bottom: 1px solid var(--line); margin-bottom: 20px; }
+.page-title-row .title { text-align: left; padding-left: 0; font-size: 26px; }
+.page-settings-button { display: grid; place-items: center; background: transparent; color: var(--text); }
+.data-action { z-index: 80; }
+.data-action-menu { width: 210px; padding: 8px; background: var(--surface-raised); border: 1px solid #42516a; border-radius: 16px; box-shadow: 0 18px 50px #0008; }
+.data-action-menu button { background: transparent; border-radius: 6px; padding: 13px 12px; border-bottom: 1px solid var(--line); }
+.data-action-menu button:last-child { border-bottom: 0; }
+.data-action-menu button:hover { background: #23344c; }
+.magazine-list-card { background: var(--surface); border-color: var(--line); border-width: 2px; border-radius: 14px; }
+.magazine-title { font-size: 18px; line-height: 1.4; overflow-wrap: anywhere; }
+.magazine-stat { color: var(--muted); font-size: 12px; line-height: 1.8; gap: 6px; flex-wrap: wrap; }
+.magazine-stat span, .magazine-stat .issue-label { color: #c5d1e2; }
+.magazine-unread-total { justify-content: flex-start; align-items: baseline; gap: 10px; margin-top: 5px; color: #c4d9f1; }
+.magazine-unread-total > span { color: var(--accent); font-size: 27px; line-height: 1.2; font-weight: 750; font-variant-numeric: tabular-nums; }
+.magazine-menu-button { display: grid; place-items: center; flex-shrink: 0; width: 32px; padding: 0; color: var(--muted); }
+.primary-nav { background: #0b1423; border-color: var(--line); gap: 0; padding-top: 8px; padding-bottom: calc(8px + env(safe-area-inset-bottom)); }
+.primary-nav button { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; background: transparent; color: #96a5ba; font-size: 12px; min-height: 60px; padding: 6px; border-radius: 0; }
+.primary-nav button.active { color: var(--accent); background: transparent; }
+.primary-nav button.active::after { content: ''; position: absolute; bottom: 0; height: 3px; width: 34px; border-radius: 4px; background: var(--accent); }
+.series-fixed-header, .completed-header-sticky, .timeline-header-sticky, .author-header-sticky { background: var(--canvas); }
+.series-page-header { margin-bottom: 14px; padding-bottom: 14px; border-bottom: 1px solid var(--line); }
+.back-button, .back-icon-button { background: transparent; color: #c9d5e7; border: 1px solid var(--line); }
+.mode-button, .sort-toggle { background: transparent; border: 1px solid #475b76; color: #dce8f8; }
+.latest-issue-box { padding: 0 0 14px; border-radius: 0; background: transparent; gap: 8px; margin-bottom: 4px; border-bottom: 1px solid var(--line); }
+.latest-issue-summary { min-width: 0; display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 10px; }
+.latest-issue-summary > span { font-size: 11px; font-weight: 500; }
+.latest-issue-box strong, .latest-issue-box .issue-label { font-size: 15px; color: #d8e6fa; }
+.sort-toggle { display: inline-flex; align-items: center; justify-content: center; gap: 4px; flex-shrink: 0; min-height: 40px; padding: 7px; font-size: 11px; }
+.sort-toggle[aria-expanded='true'] { border-color: var(--accent); background: #162e4c; }
+.sort-controls { padding: 12px 0 0; }
+.series-list-card, .series-compact-card { border-radius: 12px; background: var(--surface); border: 1px solid var(--line); }
+.series-list-card { grid-template-columns: 92px minmax(0, 1fr) 50px; gap: 10px; padding: 12px 10px; }
+.series-list-card::before { display: none; }
+.series-list-card .series-title { font-size: 15px; line-height: 1.5; max-height: 3em; }
+.series-author { order: 2; font-size: 11px; color: var(--muted); margin: 0 0 7px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.series-compact-author { color: var(--muted); font-size: 11px; }
+.series-issue, .series-start-issue { font-size: 11px; }
+.series-list-card .series-status-badge-row { align-self: flex-start; margin: 3px 0 0; justify-content: flex-start; flex-wrap: wrap; row-gap: 5px; }
+.series-status-badge-row .status-badge, .card-unread, .series-compact-status { color: #a9d8ff; background: #193653; }
+.series-status-badge-row .status-badge { font-size: 12px; padding: 5px 7px; white-space: normal; line-height: 1.4; }
+.series-period-badge { background: transparent; color: var(--muted); font-size: 10px; padding: 3px 0; }
+.series-exclusion-badge { display: inline-block; font-size: 10px; line-height: 1.4; color: #c5cfdd; background: #2a3547; border: 1px solid #4d5b70; border-radius: 5px; padding: 2px 5px; white-space: nowrap; }
+.series-step-buttons button, .series-compact-buttons button, .card-step-buttons button { background: transparent; border: 1px solid #506783; color: #cce5ff; font-weight: 500; box-shadow: none; }
+.series-step-buttons .minus-button, .series-compact-buttons .minus-button, .card-step-buttons .minus-button { color: #9baec6; border-color: #36475e; }
+.series-fixed-footer { background: #0b1423; border-color: var(--line); }
+.series-bottom-nav button { font-size: 12px; padding: 8px 5px; min-height: 48px; border-radius: 10px; }
+.series-bottom-nav .view-mode-button { background: transparent; border: 1px solid #475b76; }
+.series-bottom-nav .series-visibility-switch { background: #202b3d; color: #8f9db0; border: 1px solid #3c495d; }
+.series-bottom-nav .series-visibility-switch[aria-checked='true'] { background: #183c61; color: #d1eaff; border-color: #6cbcff; }
+.card { background: var(--surface); box-shadow: inset 0 0 0 1px var(--line); }
+.card-title { color: var(--text); }
+.view-mode-menu { background: var(--surface-raised); border: 1px solid var(--line); }
+/* Native dialog gives the action sheet focus trapping, Escape and a modal backdrop. */
+.series-action-dialog { position: fixed; inset: auto 0 0; width: min(430px, 100%); max-width: 100%; max-height: min(85dvh, 760px); padding: 0; margin: 0 auto; border: 1px solid #46556c; border-bottom: 0; border-radius: 22px 22px 0 0; background: var(--surface-raised); color: var(--text); box-shadow: 0 -20px 70px #0007; }
+.series-action-dialog::backdrop { background: #030916a8; }
+.series-action-dialog .series-popup-menu { display: flex; width: 100%; margin: 0; padding: 10px 18px calc(18px + env(safe-area-inset-bottom)); border: 0; border-radius: 0; background: transparent; gap: 0; }
+.series-action-dialog .series-popup-menu::before { content: ''; display: block; height: 4px; width: 36px; border-radius: 9px; background: #657187; margin: 0 auto 12px; }
+.series-action-heading { display: flex; align-items: center; gap: 12px; padding-bottom: 12px; border-bottom: 1px solid var(--line); }
+.series-action-heading strong { flex: 1; min-width: 0; font-size: 18px; line-height: 1.5; overflow-wrap: anywhere; }
+.series-action-dialog .sheet-close { width: 40px; min-height: 40px; flex: 0 0 40px; padding: 0; text-align: center; font-size: 24px; border: 0; }
+.series-action-dialog .series-popup-menu > button { min-height: 50px; padding: 12px 8px; background: transparent; border: 0; border-bottom: 1px solid var(--line); border-radius: 0; font-size: 14px; }
+.series-action-dialog .series-popup-menu > button:hover { background: #22324a; }
+.series-action-dialog .series-popup-menu > .action-delete { color: #fb9292; margin-top: 10px; border-bottom: 0; }
+.edit-header { padding-bottom: 14px; border-bottom: 1px solid var(--line); }
+.edit-title { font-size: 23px; }
+.edit-page { border: 0; border-radius: 0; padding: 0; background: transparent; }
+.edit-group > div { color: #c2cede; font-size: 13px; }
+.edit-page input, .edit-page select { background: #101d30; border-color: #3b4d65; }
+.edit-accordion { background: var(--surface); border-color: var(--line); }
+.edit-accordion summary { color: #ccd9eb; }
+.image-upload-area input[type='file'] { width: 100%; color: var(--muted); font-size: 12px; padding: 8px; background: transparent; }
+.image-upload-area input::file-selector-button { padding: 10px; margin-right: 10px; border: 1px solid #4b6584; border-radius: 8px; background: var(--surface); color: #d5e8ff; cursor: pointer; }
+.save-button { background: #236cce; border: 1px solid #5a9af0; border-radius: 10px; }
+.delete-button { color: #ff9393; background: transparent; border-top: 1px solid var(--line); border-radius: 0; }
+.completed-magazine-card, .completed-series-list-card, .author-select-source { background: var(--surface); border-color: var(--line); border-radius: 12px; }
+.completed-all-card { background: #14243a; border-color: #3d5b80; }
+.completed-series-list-card::before { display: none; }
+.completed-series-card-status, .completed-period-badge { background: #20354d; color: #bad7f5; }
+.author-result-count { color: var(--muted); }
+.author-series-period { color: #b6c8df; }
+.timeline-current-scope { color: #c6d7ee; }
+.timeline-year-heading { background: #14233a; border-color: #375579; color: #d7eaff; }
+.timeline-issue-heading { background: transparent; color: #b2c7e2; }
+.timeline-issue-heading { border-left: 2px solid #4a7196; border-radius: 0; }
+.timeline-event-start, .timeline-event-end { background: var(--surface); border-color: var(--line); }
+.timeline-event-start .timeline-event-type { background: #193d5c; color: #a7dbff; }
+.timeline-event-end .timeline-event-type { background: #473c2c; color: #ead3aa; }
+.timeline-event-title { color: var(--text); }
+.timeline-series-card { background: var(--surface); border-color: var(--line); }
+.weekly-settings-card, .weekly-year-row { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; }
+.weekly-year-row.current { outline: 1px solid var(--accent); background: #142a43; }
+.weekly-issue-toggle button { background: #263349; color: #a9b5c8; }
+.weekly-issue-toggle button.active { background: #276dcc; color: white; }
+.empty-message { color: var(--muted); background: var(--surface); border: 1px dashed #3c506b; font-size: 13px; line-height: 1.8; }
+@media (max-width: 360px) {
+  .series-page { padding-bottom: 0; }
+  .series-list-card { gap: 7px; padding: 10px 7px; }
+  .series-list-card .series-title { font-size: 13px; }
+  .series-page-header { grid-template-columns: 64px minmax(0, 1fr) 74px; gap: 6px; }
+  .series-bottom-nav { gap: 5px; padding-left: 8px; padding-right: 8px; }
+  .view-mode-selector { flex-basis: 92px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  button, .magazine-list-card { transition: none; }
+}
+.edit-header { position: sticky; top: 0; z-index: 25; background: var(--canvas); padding-top: 8px; }
+.edit-header .edit-title { flex: 1; }
+.header-save-button { background: transparent; border: 1px solid #4778b1; color: #8dc8ff; padding: 8px 14px; }
+.series-list-card .series-step-buttons { gap: 4px; }
+.series-step-buttons .series-more-button, .series-compact-buttons .series-more-button { background: transparent; border-color: transparent; min-height: 32px; height: 32px; color: #bdcde0; }
+.series-compact-buttons { flex-wrap: wrap; }
+.series-compact-buttons .series-more-button { flex-basis: 100%; text-align: right; }
+.series-action-dialog .series-popup-menu > button::after { content: ''; float: right; width: 6px; height: 6px; margin: 6px 2px 0 12px; border-right: 1px solid #93a7bf; border-top: 1px solid #93a7bf; transform: rotate(45deg); }
+.series-action-dialog .series-popup-menu > .action-delete::after { content: none; }
+/* Let the label and issue wrap separately instead of overlapping controls on narrow phones. */
+.series-list-card .issue-display-row { flex-wrap: wrap; row-gap: 2px; }
+.series-list-card .issue-display-row > .issue-label { flex-shrink: 0; }
