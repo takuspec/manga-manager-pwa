@@ -1,3 +1,5 @@
+import AppIcon from '../components/AppIcon'
+import PrimaryNav from '../components/PrimaryNav'
 import { useEffect, useRef, useState } from 'react'
 import {
   getEstimatedLatestIssueInfo
@@ -390,7 +392,7 @@ function MagazineListPage({
                   </span>
                 </div>
 
-                <div className="magazine-stat">
+                <div className="magazine-stat magazine-unread-total">
                   未読
                   <span>
                     {unreadTotal}
@@ -401,6 +403,7 @@ function MagazineListPage({
 
               <button
                 className="magazine-menu-button"
+                aria-label={`${magazine.name}を編集`}
                 onPointerDown={(e) => {
                   e.stopPropagation()
                   clearLongPressTimer()
@@ -413,7 +416,7 @@ function MagazineListPage({
                   )
                 }}
               >
-                ⋮
+                <AppIcon name="more" />
               </button>
 
             </div>
@@ -422,29 +425,7 @@ function MagazineListPage({
 
       </div>
 
-      <div className="bottom-nav">
-
-        <button>
-          雑誌
-        </button>
-
-        <button
-          onClick={() =>
-            navigate('/completed')
-          }
-        >
-          完結
-        </button>
-
-        <button
-          onClick={() =>
-            navigate('/timeline')
-          }
-        >
-          年表
-        </button>
-
-      </div>
+      <PrimaryNav current="/" navigate={navigate} />
 
     </div>
   )

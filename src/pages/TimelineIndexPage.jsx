@@ -1,3 +1,4 @@
+import PrimaryNav from '../components/PrimaryNav'
 import DataActionMenu from '../components/DataActionMenu'
 import ImageView from '../components/ImageView'
 
@@ -129,27 +130,7 @@ function TimelineIndexPage({
         })}
       </div>
 
-      <div className="bottom-nav">
-        <button
-          onClick={() =>
-            navigate('/')
-          }
-        >
-          雑誌
-        </button>
-
-        <button
-          onClick={() =>
-            navigate('/completed')
-          }
-        >
-          完結
-        </button>
-
-        <button>
-          年表
-        </button>
-      </div>
+      <PrimaryNav current="/timeline" navigate={navigate} />
     </div>
   )
 }
