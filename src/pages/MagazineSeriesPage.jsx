@@ -987,7 +987,7 @@ function MagazineSeriesPage({
 
         <div className="latest-issue-box">
           <div className="latest-issue-summary">
-          <span>最新号（推定）</span>
+          <span>最新号</span>
 
           <strong>
             <IssueLabel
