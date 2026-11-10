@@ -658,9 +658,6 @@ textarea {
   cursor: pointer;
 }
 
-.series-list-card.expanded {
-  align-items: start;
-}
 
 .series-list-card::before {
   content: "";
@@ -716,22 +713,7 @@ textarea {
   text-overflow: ellipsis;
 }
 
-.series-list-card.expanded .series-title,
-.series-compact-card.expanded .series-compact-title {
-  display: block;
-  max-height: 7.5em;
-  white-space: normal;
-  overflow-y: auto;
-  text-overflow: clip;
-  overflow-wrap: anywhere;
-  -webkit-line-clamp: unset;
-  -webkit-overflow-scrolling: touch;
-}
 
-.series-list-card.expanded .series-cover-small,
-.series-list-card.expanded .series-step-buttons {
-  align-self: start;
-}
 
 .series-issue {
   order: 4;
