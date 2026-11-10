@@ -136,3 +136,13 @@ button svg { flex-shrink: 0; vertical-align: middle; }
 /* Let the label and issue wrap separately instead of overlapping controls on narrow phones. */
 .series-list-card .issue-display-row { flex-wrap: wrap; row-gap: 2px; }
 .series-list-card .issue-display-row > .issue-label { flex-shrink: 0; }
+/* Keep the separator below the sort controls rather than flush with their edges. */
+.completed-header-sticky { display: flow-root; padding-bottom: 16px; }
+.completed-header-sticky .sort-row:last-child { margin-bottom: 0; }
+.timeline-year-nav { display: flex; gap: 8px; overflow-x: auto; padding: 12px 0 2px; scrollbar-width: thin; }
+.timeline-year-nav button { flex: 0 0 auto; min-width: 82px; min-height: 40px; padding: 8px 14px; background: #172438; border: 1px solid #3a4c65; color: #aabbd1; }
+.timeline-year-nav button[aria-pressed='true'] { background: #183c61; border-color: #6cbcff; color: #d1eaff; }
+.timeline-year-heading, .timeline-list-grid .timeline-year-heading { position: static; }
+.timeline-year-section { scroll-margin-top: 220px; }
+/* Leave enough trailing room to position even the final year's heading below the navigator. */
+.timeline-year-section:last-child { min-height: calc(100dvh - 180px); }

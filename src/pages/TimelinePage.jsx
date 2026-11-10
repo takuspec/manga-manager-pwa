@@ -106,6 +106,10 @@ function TimelinePage({
   const magazineId =
     Number(selectedMagazineId)
 
+  const timelineHeaderRef = useRef(null)
+  const yearSectionRefs = useRef(new Map())
+  const [jumpYear, setJumpYear] = useState(null)
+
   const [
     timelineViewMode,
     setTimelineViewMode
@@ -273,6 +277,22 @@ function TimelinePage({
 
       return groups
     }, [])
+
+  const activeJumpYear = groupedEvents.some((group) => group.year === jumpYear)
+    ? jumpYear
+    : groupedEvents[0]?.year
+
+  const jumpToYear = (year) => {
+    const section = yearSectionRefs.current.get(year)
+    if (!section) return
+    setJumpYear(year)
+    const headerHeight = timelineHeaderRef.current?.getBoundingClientRect().height || 0
+    const top = window.scrollY + section.getBoundingClientRect().top - headerHeight - 12
+    window.scrollTo({
+      top: Math.max(0, top),
+      behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth'
+    })
+  }
 
   const groupEventsByIssue = (events) => {
     return events.reduce((groups, event) => {
@@ -610,7 +630,7 @@ function TimelinePage({
 
   return (
     <div className="app">
-      <div className="completed-header-sticky timeline-header-sticky">
+      <div className="completed-header-sticky timeline-header-sticky" ref={timelineHeaderRef}>
         <div className="series-page-header">
           <button
             className="back-button"
@@ -630,6 +650,18 @@ function TimelinePage({
         <div className="timeline-current-scope">
           {selectedMagazineLabel}
         </div>
+        {groupedEvents.length > 0 && (
+          <nav className="timeline-year-nav" aria-label="年を選んで移動">
+            {groupedEvents.map((group) => (
+              <button type="button" key={group.year}
+                aria-pressed={activeJumpYear === group.year}
+                aria-controls={`timeline-year-${group.year}`}
+                onClick={() => jumpToYear(group.year)}>
+                {group.year}年
+              </button>
+            ))}
+          </nav>
+        )}
       </div>
 
       <div
@@ -651,6 +683,11 @@ function TimelinePage({
           <section
             className="timeline-year-section"
             key={group.year}
+            id={`timeline-year-${group.year}`}
+            ref={(element) => {
+              if (element) yearSectionRefs.current.set(group.year, element)
+              else yearSectionRefs.current.delete(group.year)
+            }}
           >
             <div className="timeline-year-heading">
               {group.year}年
