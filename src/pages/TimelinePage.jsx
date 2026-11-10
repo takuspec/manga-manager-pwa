@@ -1,4 +1,5 @@
 import {
+  useEffect,
   useRef,
   useState
 } from 'react'
@@ -281,6 +282,37 @@ function TimelinePage({
   const activeJumpYear = groupedEvents.some((group) => group.year === jumpYear)
     ? jumpYear
     : groupedEvents[0]?.year
+
+  const timelineYearKey = groupedEvents.map((group) => group.year).join(',')
+
+  useEffect(() => {
+    let frame = 0
+    const updateYear = () => {
+      frame = 0
+      const boundary = (timelineHeaderRef.current?.getBoundingClientRect().bottom || 0) + 24
+      const sections = Array.from(yearSectionRefs.current.entries())
+      let visibleYear = sections[0]?.[0] ?? null
+      for (const [year, section] of sections) {
+        if (section.getBoundingClientRect().top <= boundary) visibleYear = year
+        else break
+      }
+      setJumpYear((previous) => previous === visibleYear ? previous : visibleYear)
+    }
+    const scheduleUpdate = () => {
+      if (!frame) frame = requestAnimationFrame(updateYear)
+    }
+    const observer = new ResizeObserver(scheduleUpdate)
+    if (timelineHeaderRef.current) observer.observe(timelineHeaderRef.current)
+    window.addEventListener('scroll', scheduleUpdate, { passive: true })
+    window.addEventListener('resize', scheduleUpdate)
+    scheduleUpdate()
+    return () => {
+      cancelAnimationFrame(frame)
+      observer.disconnect()
+      window.removeEventListener('scroll', scheduleUpdate)
+      window.removeEventListener('resize', scheduleUpdate)
+    }
+  }, [selectedMagazineId, timelineViewMode, timelineYearKey])
 
   const jumpToYear = (year) => {
     const section = yearSectionRefs.current.get(year)

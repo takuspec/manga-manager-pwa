@@ -8,14 +8,10 @@ import {
 } from 'react'
 import ImageView from '../components/ImageView'
 import SeriesActionPanel from '../components/SeriesActionPanel'
-import IssueInputRow from '../components/IssueInputRow'
 import IssueLabel from '../components/IssueLabel'
 import HartaGroupBadge from '../components/HartaGroupBadge'
 
 import {
-  clampIssueForYear,
-  getIssueOptions,
-  getYearOptions,
   getEstimatedLatestIssueInfo,
   formatIssueSpanPeriod,
   getIssueSpanCount,
@@ -88,20 +84,12 @@ function MagazineSeriesPage({
   setShowUnreadZeroOngoing,
   menuSeriesId,
   setMenuSeriesId,
-  selectedSeriesIds,
-  setSelectedSeriesIds,
-  bulkIssueYear,
-  setBulkIssueYear,
-  bulkIssueValue,
-  setBulkIssueValue,
   getUnreadCount,
   getEstimatedLatestIssue,
   addIssue,
   minusIssue,
   bulkAddIssueByHartaGroups,
   bulkMinusIssueByHartaGroups,
-  bulkChangeSelectedIssue,
-  toggleSeriesSelection,
   toggleStatus,
   toggleMagazineUnreadExclusion,
   updateStatus,
@@ -148,8 +136,6 @@ function MagazineSeriesPage({
       selectedMagazine
     )
 
-  const yearOptions =
-    getYearOptions()
 
   const [
     showSeriesControls,
@@ -755,161 +741,6 @@ function MagazineSeriesPage({
     setMenuSeriesId
   ])
 
-  const selectableDisplaySeriesIds =
-    displaySeries
-      .filter((item) => {
-        return !isFinishedSeries(item)
-      })
-      .map((item) => {
-      return item.id
-      })
-
-  const gridColumnCount = 3
-
-  const expandedGridIndex =
-    displaySeries.findIndex((item) => {
-      return item.id === menuSeriesId
-    })
-
-  const expandedGridItem =
-    expandedGridIndex >= 0
-      ? displaySeries[expandedGridIndex]
-      : null
-
-  const shouldShowGridActionPanel =
-    selectedSeriesIds.length <= 1
-
-  const expandedGridRowEndIndex =
-    expandedGridIndex >= 0
-      ? Math.min(
-          displaySeries.length - 1,
-          Math.floor(
-            expandedGridIndex /
-              gridColumnCount
-          ) *
-            gridColumnCount +
-            gridColumnCount -
-            1
-        )
-      : -1
-
-  const latestIssueSerial =
-    getIssueSerial(
-      estimatedLatestIssue.year,
-      estimatedLatestIssue.issue,
-      selectedMagazine
-    )
-
-  const normalizeBulkIssueValue = (
-    year,
-    issue
-  ) => {
-    if (issue === '') {
-      return ''
-    }
-
-    const clampedIssue =
-      clampIssueForYear(
-        selectedMagazine,
-        year,
-        issue,
-        {
-          includeUnread: true
-        }
-      )
-
-    const numericIssue =
-      Number(clampedIssue) || 0
-
-    if (!numericIssue || isHarta) {
-      return clampedIssue
-    }
-
-    const issueSerial =
-      getIssueSerial(
-        Number(year) ||
-          estimatedLatestIssue.year,
-        numericIssue,
-        selectedMagazine
-      )
-
-    if (issueSerial <= latestIssueSerial) {
-      return numericIssue
-    }
-
-    if (
-      Number(year) ===
-      estimatedLatestIssue.year
-    ) {
-      return estimatedLatestIssue.issue
-    }
-
-    return 0
-  }
-
-  const bulkIssueOptions =
-    getIssueOptions(
-      selectedMagazine,
-      bulkIssueYear,
-      {
-        includeUnread: true
-      }
-    ).filter((option) => {
-      const issue =
-        Number(option.value) || 0
-
-      if (!issue || isHarta) {
-        return true
-      }
-
-      return (
-        getIssueSerial(
-          Number(bulkIssueYear) ||
-            estimatedLatestIssue.year,
-          issue,
-          selectedMagazine
-        ) <= latestIssueSerial
-      )
-    })
-
-  const handleBulkIssueYearChange = (year) => {
-    setBulkIssueYear(year)
-
-    setBulkIssueValue(
-      normalizeBulkIssueValue(
-        year,
-        bulkIssueValue
-      )
-    )
-  }
-
-  const areAllDisplaySeriesSelected =
-    selectableDisplaySeriesIds.length > 0 &&
-    selectableDisplaySeriesIds.every((id) => {
-      return selectedSeriesIds.includes(id)
-    })
-
-  const toggleDisplaySeriesSelection = () => {
-    if (!setSelectedSeriesIds) {
-      return
-    }
-
-    setSelectedSeriesIds((prevIds) => {
-      if (areAllDisplaySeriesSelected) {
-        return prevIds.filter((id) => {
-          return !selectableDisplaySeriesIds.includes(id)
-        })
-      }
-
-      return Array.from(
-        new Set([
-          ...prevIds,
-          ...selectableDisplaySeriesIds
-        ])
-      )
-    })
-  }
-
   const toggleHartaGroup = (group) => {
     setSelectedHartaGroups((prevGroups) => {
       if (prevGroups.includes(group)) {
@@ -1091,65 +922,6 @@ function MagazineSeriesPage({
               </button>
             </div>
 
-            {currentViewMode === 'grid' && (
-
-              <div className="bulk-issue-box">
-
-              <IssueInputRow
-                yearValue={bulkIssueYear}
-                onYearChange={setBulkIssueYear}
-                issueValue={
-                  normalizeBulkIssueValue(
-                    bulkIssueYear,
-                    bulkIssueValue
-                  )
-                }
-                onIssueChange={(value) =>
-                  setBulkIssueValue(
-                    normalizeBulkIssueValue(
-                      bulkIssueYear,
-                      value
-                    )
-                  )
-                }
-                yearOptions={yearOptions}
-                issueOptions={bulkIssueOptions}
-                useIssueSelect={!isHarta}
-                showYear={!isHarta}
-                prefix={isHarta ? 'volume' : ''}
-                suffix={isHarta ? '' : undefined}
-                emptyIssueValue=""
-                className={`bulk-issue-input-row ${
-                  isHarta
-                    ? 'harta-issue-input-row'
-                    : ''
-                }`}
-                onYearSelected={
-                  handleBulkIssueYearChange
-                }
-              />
-
-              <button
-                onClick={bulkChangeSelectedIssue}
-              >
-                一括変更
-              </button>
-
-              <button
-                type="button"
-                onClick={
-                  toggleDisplaySeriesSelection
-                }
-              >
-                {areAllDisplaySeriesSelected
-                  ? '全解除'
-                  : '全選択'}
-              </button>
-
-              </div>
-
-            )}
-
             {isHarta && (
               <div className="harta-group-bulk-actions">
                 {HARTA_GROUP_OPTIONS.map((option) => {
@@ -1176,6 +948,8 @@ function MagazineSeriesPage({
                   )
                 })}
 
+                {currentViewMode !== 'grid' && (
+                  <>
                 <button
                   type="button"
                   className="harta-group-step"
@@ -1191,6 +965,8 @@ function MagazineSeriesPage({
                 >
                   -1
                 </button>
+                  </>
+                )}
               </div>
             )}
           </>
@@ -1218,12 +994,6 @@ function MagazineSeriesPage({
               className={`series-list-card ${
                 item.status === 'completed'
                   ? 'completed'
-                  : ''
-              } ${
-                selectedSeriesIds.includes(
-                  item.id
-                )
-                  ? 'selected'
                   : ''
               } ${
                 menuSeriesId === item.id
@@ -1461,89 +1231,27 @@ function MagazineSeriesPage({
           }`}
         >
 
-          {displaySeries.map((item, index) => (
+          {displaySeries.map((item) => (
 
             <Fragment
               key={item.id}
             >
               <div
-                className={`card ${
-                  item.status === 'completed'
-                    ? 'completed'
-                    : ''
-                } ${
-                  selectedSeriesIds.includes(
-                    item.id
-                  )
-                    ? 'selected'
-                    : ''
-                } ${
-                  selectedSeriesIds.includes(
-                    item.id
-                  ) &&
-                  selectedSeriesIds.length === 1
-                    ? 'single-selected'
-                    : ''
-                } ${
-                  menuSeriesId === item.id &&
-                  shouldShowGridActionPanel
-                    ? 'expanded'
-                    : ''
-                } ${
-                  currentShowImages
-                    ? ''
-                    : 'card-no-image'
-                }`}
+                className={`card ${item.status === 'completed' ? 'completed' : ''} ${currentShowImages ? '' : 'card-no-image'}`}
                 data-series-card-id={item.id}
-                onClick={(e) => {
-                  e.stopPropagation()
-
-                  if (
-                    item.status === 'completed'
-                  ) {
-                    if (selectedSeriesIds.length > 1) {
-                      setMenuSeriesId(null)
-                      return
-                    }
-
-                    setMenuSeriesId(
-                      menuSeriesId === item.id
-                        ? null
-                        : item.id
-                    )
-                    return
+                role="button"
+                tabIndex={0}
+                aria-label={`${item.title}の作品メニュー`}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault()
+                    event.stopPropagation()
+                    setMenuSeriesId(item.id)
                   }
-
-                  const isSelected =
-                    selectedSeriesIds.includes(
-                      item.id
-                    )
-
-                  const nextSelectedCount =
-                    isSelected
-                      ? Math.max(
-                          0,
-                          selectedSeriesIds.length - 1
-                        )
-                      : selectedSeriesIds.length + 1
-
-                  toggleSeriesSelection(
-                    item.id
-                  )
-
-                  if (isSelected) {
-                    if (menuSeriesId === item.id) {
-                      setMenuSeriesId(null)
-                    }
-
-                    return
-                  }
-
-                  setMenuSeriesId(
-                    nextSelectedCount === 1
-                      ? item.id
-                      : null
-                  )
+                }}
+                onClick={(event) => {
+                  event.stopPropagation()
+                  setMenuSeriesId(item.id)
                 }}
               >
 
@@ -1582,37 +1290,11 @@ function MagazineSeriesPage({
                   'card-unread'
                 )}
 
-                <div className="card-step-buttons">
-                  <button
-                    type="button"
-                    className="minus-button"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      minusIssue(item.id)
-                    }}
-                  >
-                    -1
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      addIssue(item.id)
-                    }}
-                  >
-                    +1
-                  </button>
-                </div>
-
               </div>
 
-              {expandedGridItem &&
-                shouldShowGridActionPanel &&
-                expandedGridRowEndIndex ===
-                  index && (
+              {menuSeriesId === item.id && (
                   <SeriesActionPanel
-                    item={expandedGridItem}
+                    item={item}
                     navigate={navigate}
                     toggleStatus={toggleStatus}
                     toggleMagazineUnreadExclusion={toggleMagazineUnreadExclusion}
