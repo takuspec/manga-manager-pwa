@@ -1132,64 +1132,43 @@ button svg { flex-shrink: 0; vertical-align: middle; }
   font-weight: 650;
 }
 
-/* カラーページ: 作品ごとの一覧（連載データから作る） */
-.color-series-tools {
-  display: grid;
-  gap: 10px;
-}
-
-.color-series-list {
-  display: grid;
-  gap: 8px;
-}
-
-.color-series-list > .cloud-settings-note {
-  margin: 0;
-}
-
-.color-series-row {
-  display: grid;
-  grid-template-columns: 64px minmax(0, 1fr);
-  gap: 12px;
-  align-items: center;
+/* カラーページ: 作品ごとの一覧（連載一覧のグリッドと同じ見た目） */
+.color-series-grid .card {
+  display: flex;
+  flex-direction: column;
   min-height: 0;
-  padding: 8px;
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  background: var(--surface);
+  padding: 0;
+  border: 0;
+  border-radius: 14px;
   color: var(--text);
-  font-weight: 400;
+  font: inherit;
+  text-align: center;
+}
+
+.color-series-grid .card .card-title {
+  width: 100%;
   text-align: left;
 }
 
-.color-series-row .color-thumb {
-  width: 64px;
+.color-series-grid .card .card-issue {
+  font-weight: 500;
 }
 
-.color-series-row.empty .color-thumb {
-  border: 1px dashed #33445e;
-  background: transparent;
+.color-series-grid .card .card-unread {
+  margin-top: 4px;
+  font-weight: 600;
 }
 
-.color-series-row-body {
-  display: grid;
-  gap: 3px;
-  min-width: 0;
+.color-series-grid .card.completed {
+  opacity: 0.8;
 }
 
-.color-series-row-title {
-  font-size: 14px;
-  font-weight: 650;
-  overflow-wrap: anywhere;
+.color-series-footer {
+  z-index: 60;
 }
 
-.color-series-row-meta {
-  margin: 0;
-  color: var(--muted);
-  font-size: 12px;
-  line-height: 1.5;
-  font-variant-numeric: tabular-nums;
-  overflow-wrap: anywhere;
+.color-series-footer button {
+  flex: 1 1 0;
 }
 
 .color-status-badge {
@@ -1211,6 +1190,15 @@ button svg { flex-shrink: 0; vertical-align: middle; }
 .color-status-badge.completed {
   border-color: #64748b;
   color: #cbd5e1;
+}
+
+.color-series-row-meta {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
 }
 
 /* 設定メニューのバージョン表示 */

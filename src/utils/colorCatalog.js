@@ -347,6 +347,7 @@ export const SERIES_FILTERS = [
 export const SERIES_SORTS = [
   { id: 'new', label: '開始が新しい順' },
   { id: 'old', label: '開始が古い順' },
+  { id: 'length', label: '連載期間が長い順' },
   { id: 'name', label: '名前順' },
   { id: 'count', label: '画像の多い順' }
 ]
@@ -364,9 +365,9 @@ function normalizeStatus(value) {
     : 'ongoing'
 }
 
-// 連載期間の文章。アプリの作品カードと同じ決まりで数える。
-// 例: 「2018年41号〜2020年24号（1年36週）」「2024年10号〜連載中（2年40週）」
-export function describeSeriesPeriod(
+// 連載期間。アプリの作品カードと同じ決まりで数える。
+// 開始号が未設定なら null。
+export function getSeriesPeriod(
   series,
   appMagazine,
   today = new Date()
@@ -378,7 +379,7 @@ export function describeSeriesPeriod(
     Number(series.startIssue) || 0
 
   if (!appMagazine || !startYear || !startIssue) {
-    return '期間未設定'
+    return null
   }
 
   const status = normalizeStatus(series.status)
@@ -446,8 +447,37 @@ export function describeSeriesPeriod(
         )
       : SERIES_STATUS_LABELS[status]
 
-  return `${startLabel}〜${endLabel}${
-    duration ? `（${duration}）` : ''
+  return {
+    startLabel,
+    endLabel,
+    duration,
+    spanCount: span
+  }
+}
+
+// 例: 「2018年41号〜2020年24号（1年36週）」「2024年10号〜連載中（2年40週）」
+export function describeSeriesPeriod(
+  series,
+  appMagazine,
+  today = new Date()
+) {
+  const period =
+    getSeriesPeriod(
+      series,
+      appMagazine,
+      today
+    )
+
+  if (!period) {
+    return '期間未設定'
+  }
+
+  return `${period.startLabel}〜${
+    period.endLabel
+  }${
+    period.duration
+      ? `（${period.duration}）`
+      : ''
   }`
 }
 
@@ -494,10 +524,20 @@ export function listCatalogSeriesEntries(
 
     seen.add(title)
 
+    const period =
+      getSeriesPeriod(
+        series,
+        appMagazine,
+        today
+      )
+
     entries.push({
       title,
       status: normalizeStatus(series.status),
       start: span.start,
+      spanCount: period?.spanCount || 0,
+      startLabel: period?.startLabel || '',
+      duration: period?.duration || '',
       period: describeSeriesPeriod(
         series,
         appMagazine,
@@ -532,6 +572,9 @@ export function mergeSeriesGroups(
       title: group.title,
       status: current?.status || 'unknown',
       start: current?.start ?? -Infinity,
+      spanCount: current?.spanCount || 0,
+      startLabel: current?.startLabel || '',
+      duration: current?.duration || '',
       period: current?.period || '',
       count: group.count,
       cover: group.cover
@@ -572,6 +615,10 @@ export function arrangeSeriesGroups(
     name: byName,
     count: (a, b) =>
       b.count - a.count || byName(a, b),
+    // 期間が分からない作品は最後
+    length: (a, b) =>
+      b.spanCount - a.spanCount ||
+      byName(a, b),
     // 開始号が分からない作品は、どちらの並びでも最後
     new: (a, b) =>
       Number(known(b)) - Number(known(a)) ||

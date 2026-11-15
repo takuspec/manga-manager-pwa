@@ -664,56 +664,26 @@ function ColorMagazinePage({
             )}
 
           {view === 'series' && (
-            <div className="color-series-tools">
-              <div
-                className="color-chip-row"
-                role="group"
-                aria-label="絞り込み"
+            <label className="color-toolbar-field">
+              <span>並べ順</span>
+              <select
+                value={sort}
+                onChange={(event) =>
+                  updateSearch({
+                    s: event.target.value
+                  })
+                }
               >
-                {SERIES_FILTERS.map((item) => (
-                  <button
+                {SERIES_SORTS.map((item) => (
+                  <option
                     key={item.id}
-                    type="button"
-                    className={
-                      filter === item.id
-                        ? 'color-chip selected'
-                        : 'color-chip'
-                    }
-                    aria-pressed={
-                      filter === item.id
-                    }
-                    onClick={() =>
-                      updateSearch({
-                        f: item.id
-                      })
-                    }
+                    value={item.id}
                   >
                     {item.label}
-                  </button>
+                  </option>
                 ))}
-              </div>
-
-              <label className="color-toolbar-field">
-                <span>並べ順</span>
-                <select
-                  value={sort}
-                  onChange={(event) =>
-                    updateSearch({
-                      s: event.target.value
-                    })
-                  }
-                >
-                  {SERIES_SORTS.map((item) => (
-                    <option
-                      key={item.id}
-                      value={item.id}
-                    >
-                      {item.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            </div>
+              </select>
+            </label>
           )}
 
           {!isSwitching &&
@@ -729,20 +699,16 @@ function ColorMagazinePage({
           {!isSwitching &&
             view === 'series' &&
             seriesGroups.length > 0 && (
-              <div className="color-series-list">
-                <p className="cloud-settings-note">
-                  {seriesGroups.length}作品
-                </p>
-
+              <div className="grid color-series-grid">
                 {seriesGroups.map((group) => (
                   <button
                     key={group.title}
                     type="button"
-                    className={
-                      group.cover
-                        ? 'color-series-row'
-                        : 'color-series-row empty'
-                    }
+                    className={`card ${
+                      group.status === 'completed'
+                        ? 'completed'
+                        : ''
+                    }`}
                     onClick={() =>
                       navigate(
                         `/color/${slug}/series/${encodeURIComponent(
@@ -751,7 +717,7 @@ function ColorMagazinePage({
                       )
                     }
                   >
-                    <div className="color-thumb">
+                    <div className="cover">
                       {group.cover ? (
                         <CloudImage
                           imageKey={thumbKey(
@@ -763,46 +729,74 @@ function ColorMagazinePage({
                           alt=""
                         />
                       ) : (
-                        <div className="cloud-image-placeholder">
+                        <div className="no-image">
                           未登録
                         </div>
                       )}
                     </div>
 
-                    <div className="color-series-row-body">
-                      <span className="color-series-row-title">
-                        {group.title}
-                      </span>
+                    <div className="card-title">
+                      {group.title}
+                    </div>
 
-                      <span className="color-series-row-meta">
-                        {SERIES_STATUS_LABELS[
-                          group.status
-                        ] && (
-                          <span
-                            className={`color-status-badge ${group.status}`}
-                          >
-                            {
-                              SERIES_STATUS_LABELS[
-                                group.status
-                              ]
-                            }
-                          </span>
-                        )}
-                        {group.count > 0
-                          ? `${group.count}枚`
-                          : '画像なし'}
-                      </span>
-
-                      {group.period && (
-                        <span className="color-series-row-meta">
-                          {group.period}
+                    {group.startLabel && (
+                      <div className="card-start-issue">
+                        <span className="card-start-label">
+                          開始
                         </span>
-                      )}
+                        <span>
+                          {group.startLabel}
+                        </span>
+                      </div>
+                    )}
+
+                    <div className="card-issue">
+                      {[
+                        SERIES_STATUS_LABELS[
+                          group.status
+                        ],
+                        group.duration
+                      ]
+                        .filter(Boolean)
+                        .join('・') || '期間未設定'}
+                    </div>
+
+                    <div className="card-unread">
+                      {group.count > 0
+                        ? `${group.count}枚`
+                        : '画像なし'}
                     </div>
                   </button>
                 ))}
               </div>
             )}
+
+          {view === 'series' && (
+            <div
+              className="bottom-nav series-bottom-nav color-series-footer"
+              role="radiogroup"
+              aria-label="絞り込み"
+            >
+              {SERIES_FILTERS.map((item) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  role="radio"
+                  aria-checked={
+                    filter === item.id
+                  }
+                  className="series-visibility-switch"
+                  onClick={() =>
+                    updateSearch({
+                      f: item.id
+                    })
+                  }
+                >
+                  <span>{item.label}</span>
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>

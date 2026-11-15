@@ -381,3 +381,49 @@ test('作品ごとの表示: 連載データを使い、絞り込みと並べ替
   assert.equal(merged.status, 'ongoing')
   assert.match(merged.period, /〜連載中/)
 })
+
+test('連載期間が長い順', () => {
+  const range = {
+    start: { year: 2018, issue: 41 },
+    latest: { year: 2026, issue: 51 }
+  }
+
+  const groups =
+    mergeSeriesGroups(
+      listCatalogSeriesEntries(
+        seriesList,
+        jump,
+        range,
+        TODAY
+      ),
+      [
+        {
+          title: 'アプリにない作品',
+          count: 1,
+          cover: null
+        }
+      ]
+    )
+
+  const ordered =
+    arrangeSeriesGroups(groups, 'all', 'length')
+
+  assert.deepEqual(
+    ordered.map((group) => group.title),
+    [
+      '長期連載',
+      // 2020年から連載中（休載中）なので、2015〜2018年の作品より長い
+      '休載中',
+      '2018年41号で終了',
+      '合併号で開始',
+      '隔週連載',
+      'アプリにない作品'
+    ]
+  )
+
+  const longest = ordered[0]
+
+  assert.ok(longest.spanCount > 1000)
+  assert.equal(longest.startLabel.startsWith('1997年'), true)
+  assert.match(longest.duration, /^29年\d+週$/)
+})
