@@ -1,5 +1,5 @@
 import ImageCropModal from './ImageCropModal'
-import ImageView from './ImageView'
+import ZoomableImage from './ZoomableImage'
 import IssueInputRow from './IssueInputRow'
 import { useEffect, useState } from 'react'
 import {
@@ -388,10 +388,11 @@ function SeriesEdit({
       <div className="edit-page">
 
         <div className="cover large">
-          <ImageView
+          <ZoomableImage
             imageId={selectedSeries.imageId}
             imageBlob={localImageBlob}
             fallbackImage={localImage}
+            title={selectedSeries.title}
           />
         </div>
 

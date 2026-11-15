@@ -28,6 +28,7 @@ import {
   restoreImageBackupEntries,
   saveImageBlob
 } from '../utils/imageDb'
+import compressImage from '../utils/compressImage'
 
 const MAGAZINE_STORAGE_KEY = 'magazines-v3'
 const SERIES_STORAGE_KEY = 'series-v2'
@@ -944,7 +945,9 @@ function useMangaData({
       }
 
       const newImageId =
-        await saveImageBlob(file)
+        await saveImageBlob(
+          await compressImage(file)
+        )
 
       let oldImageId = ''
 
@@ -1794,7 +1797,9 @@ function useMangaData({
     }
 
     const newImageId =
-      await saveImageBlob(file)
+      await saveImageBlob(
+        await compressImage(file)
+      )
 
     const oldImageId =
       seriesList.find((item) => {

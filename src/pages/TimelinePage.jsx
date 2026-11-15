@@ -5,6 +5,7 @@ import {
 } from 'react'
 import { useParams } from 'react-router-dom'
 import ImageView from '../components/ImageView'
+import ZoomableImage from '../components/ZoomableImage'
 import IssueLabel from '../components/IssueLabel'
 import {
   formatIssueSpanPeriod,
@@ -834,11 +835,12 @@ function TimelinePage({
             }}
           >
             <div className="timeline-series-card-cover">
-              <ImageView
+              <ZoomableImage
                 imageId={selectedTimelineSeries.imageId}
                 fallbackImage={
                   selectedTimelineSeries.image
                 }
+                title={selectedTimelineSeries.title}
               />
             </div>
 

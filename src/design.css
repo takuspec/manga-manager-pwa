@@ -146,3 +146,86 @@ button svg { flex-shrink: 0; vertical-align: middle; }
 .timeline-year-section { scroll-margin-top: 220px; }
 /* Leave enough trailing room to position even the final year's heading below the navigator. */
 .timeline-year-section:last-child { min-height: calc(100dvh - 180px); }
+
+/* 画像の全画面表示（解像度の確認用） */
+.zoomable-image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: zoom-in;
+}
+
+.zoomable-image:disabled {
+  cursor: default;
+  opacity: 1;
+}
+
+.fullscreen-image-viewer {
+  position: fixed;
+  inset: 0;
+  z-index: 10001;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #000;
+  touch-action: none;
+  overscroll-behavior: contain;
+}
+
+.fullscreen-image-viewer-image {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+
+.fullscreen-image-viewer-empty {
+  color: #d1d5db;
+  font-size: 14px;
+}
+
+.fullscreen-image-viewer-close {
+  position: absolute;
+  top: calc(env(safe-area-inset-top, 0px) + 10px);
+  right: calc(env(safe-area-inset-right, 0px) + 10px);
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(17, 24, 39, 0.72);
+  color: #fff;
+  font-size: 26px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.fullscreen-image-viewer-info {
+  position: absolute;
+  left: calc(env(safe-area-inset-left, 0px) + 10px);
+  right: calc(env(safe-area-inset-right, 0px) + 10px);
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 10px);
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(17, 24, 39, 0.78);
+  color: #f9fafb;
+  font-size: 13px;
+  line-height: 1.6;
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+}
+
+.fullscreen-image-viewer-hint {
+  color: #9ca3af;
+  font-size: 11px;
+}

@@ -1,4 +1,4 @@
-import ImageView from './ImageView'
+import ZoomableImage from './ZoomableImage'
 import IssueLabel from './IssueLabel'
 import {
   formatIssueSpanPeriod,
@@ -243,9 +243,10 @@ function SeriesInfoCard({
         }}
       >
         <div className="timeline-series-card-cover">
-          <ImageView
+          <ZoomableImage
             imageId={series.imageId}
             fallbackImage={series.image}
+            title={series.title}
           />
         </div>
 
