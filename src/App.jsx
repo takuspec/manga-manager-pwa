@@ -25,6 +25,9 @@ import TimelineIndexPage from './pages/TimelineIndexPage'
 import TimelinePage from './pages/TimelinePage'
 import ImageSizeTestPage from './pages/ImageSizeTestPage'
 import CloudSettingsPage from './pages/CloudSettingsPage'
+import ColorIndexPage from './pages/ColorIndexPage'
+import ColorMagazinePage from './pages/ColorMagazinePage'
+import ColorIssuePage from './pages/ColorIssuePage'
 
 import {
   getEstimatedLatestIssue,
@@ -641,6 +644,34 @@ function App() {
             seriesList={seriesList}
             navigate={navigate}
             useParams={useParams}
+          />
+        }
+      />
+
+      <Route
+        path="/color"
+        element={
+          <ColorIndexPage
+            magazineList={magazineList}
+            navigate={navigate}
+          />
+        }
+      />
+
+      <Route
+        path="/color/:slug"
+        element={
+          <ColorMagazinePage
+            navigate={navigate}
+          />
+        }
+      />
+
+      <Route
+        path="/color/:slug/:year/:issue"
+        element={
+          <ColorIssuePage
+            navigate={navigate}
           />
         }
       />

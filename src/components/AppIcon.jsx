@@ -5,6 +5,7 @@ const paths = {
   settings: 'M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8Zm-2-5h4l1 3 3-1 2 3-2 3 2 3-2 3-3-1-1 3h-4l-1-3-3 1-2-3 2-3-2-3 2-3 3 1 1-3Z',
   sort: 'M7 3v18m-4-4 4 4 4-4M17 21V3m-4 4 4-4 4 4',
   more: 'M12 4v.01M12 12v.01M12 20v.01',
+  image: 'M5 4h14a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Zm-2 13 5-5 4 4 3-3 6 5M15.5 9v.01',
 }
 
 export default function AppIcon({ name, size = 22 }) {

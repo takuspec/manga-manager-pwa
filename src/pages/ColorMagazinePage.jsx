@@ -1,0 +1,384 @@
+import { useEffect, useState } from 'react'
+import {
+  useParams,
+  useSearchParams
+} from 'react-router-dom'
+import CloudImage from '../components/CloudImage'
+import {
+  loadRootIndex,
+  loadYearIndex
+} from '../utils/colorStore'
+import {
+  formatIssueFolder,
+  issueFolder,
+  listIssues,
+  normalizeSlug,
+  normalizeYear,
+  parseIssueLabel,
+  thumbKey
+} from '../utils/colorLibrary'
+
+// 号の代表画像。表紙があれば表紙、なければ先頭の1枚。
+function pickCover(images) {
+  return (
+    images.find(
+      (image) => image.kind === 'cover'
+    ) || images[0]
+  )
+}
+
+function ColorMagazinePage({ navigate }) {
+  const params = useParams()
+  const [searchParams, setSearchParams] =
+    useSearchParams()
+
+  const slug = normalizeSlug(params.slug)
+
+  const requestedYear =
+    normalizeYear(searchParams.get('y'))
+
+  const [state, setState] =
+    useState({
+      status: 'loading',
+      key: '',
+      magazine: null,
+      year: 0,
+      index: null,
+      fromCache: false,
+      error: ''
+    })
+
+  const [issueInput, setIssueInput] =
+    useState('')
+  const [yearInput, setYearInput] =
+    useState('')
+  const [formError, setFormError] =
+    useState('')
+
+  const loadKey = `${slug}:${requestedYear}`
+
+  useEffect(() => {
+    if (!slug) {
+      return undefined
+    }
+
+    let active = true
+
+    const load = async () => {
+      const rootResult =
+        await loadRootIndex()
+
+      const magazine =
+        rootResult.root.magazines.find(
+          (item) => item.slug === slug
+        )
+
+      if (!magazine) {
+        throw new Error(
+          'この雑誌は登録されていません。'
+        )
+      }
+
+      const year =
+        requestedYear ||
+        magazine.years[0] ||
+        new Date().getFullYear()
+
+      const yearResult =
+        await loadYearIndex(slug, year)
+
+      return {
+        status: 'ready',
+        key: loadKey,
+        magazine,
+        year,
+        index: yearResult.index,
+        fromCache:
+          rootResult.fromCache ||
+          yearResult.fromCache,
+        error: ''
+      }
+    }
+
+    load()
+      .then((next) => {
+        if (active) {
+          setState(next)
+        }
+      })
+      .catch((error) => {
+        if (active) {
+          setState({
+            status: 'error',
+            key: loadKey,
+            magazine: null,
+            year: 0,
+            index: null,
+            fromCache: false,
+            error:
+              error?.message ||
+              '読み込めませんでした。'
+          })
+        }
+      })
+
+    return () => {
+      active = false
+    }
+  }, [slug, requestedYear, loadKey])
+
+  const isSwitching =
+    state.status === 'ready' &&
+    state.key !== loadKey
+
+  const yearOptions =
+    state.magazine
+      ? Array.from(
+          new Set([
+            ...state.magazine.years,
+            state.year,
+            new Date().getFullYear()
+          ])
+        ).sort((a, b) => b - a)
+      : []
+
+  const issues =
+    state.index
+      ? listIssues(state.index).reverse()
+      : []
+
+  const openYear = (value) => {
+    const year = normalizeYear(value)
+
+    if (!year) {
+      setFormError(
+        '年は西暦4桁で入力してください。'
+      )
+      return
+    }
+
+    setFormError('')
+    setYearInput('')
+    setSearchParams(
+      {
+        y: String(year)
+      },
+      {
+        replace: true
+      }
+    )
+  }
+
+  const openIssue = (event) => {
+    event.preventDefault()
+
+    const issue =
+      parseIssueLabel(issueInput)
+
+    if (!issue) {
+      setFormError(
+        '号は「50」や「4-5」（合併号）のように入力してください。'
+      )
+      return
+    }
+
+    setFormError('')
+    navigate(
+      `/color/${slug}/${state.year}/${issueFolder(
+        issue
+      )}`
+    )
+  }
+
+  return (
+    <div className="app">
+      <div className="series-page-header">
+        <button
+          className="back-button"
+          onClick={() => navigate('/color')}
+        >
+          ← 戻る
+        </button>
+
+        <div className="title series-page-title">
+          {state.magazine?.name ||
+            'カラーページ'}
+        </div>
+
+        <div />
+      </div>
+
+      {!slug && (
+        <div className="color-notice error">
+          <p>ページが見つかりません。</p>
+        </div>
+      )}
+
+      {slug &&
+        state.status === 'loading' && (
+          <div className="empty-message">
+            読み込み中…
+          </div>
+        )}
+
+      {state.status === 'error' && (
+        <div className="color-notice error">
+          <p>{state.error}</p>
+        </div>
+      )}
+
+      {state.status === 'ready' && (
+        <div className="color-page">
+          {state.fromCache && (
+            <div className="color-notice">
+              <p>
+                通信できないため、前回の内容を表示しています。
+              </p>
+            </div>
+          )}
+
+          <div className="color-toolbar">
+            <label className="color-toolbar-field">
+              <span>年</span>
+              <select
+                value={state.year}
+                onChange={(event) =>
+                  openYear(
+                    event.target.value
+                  )
+                }
+              >
+                {yearOptions.map((year) => (
+                  <option
+                    key={year}
+                    value={year}
+                  >
+                    {year}年
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <form
+              className="color-toolbar-field"
+              onSubmit={(event) => {
+                event.preventDefault()
+                openYear(yearInput)
+              }}
+            >
+              <span>ほかの年</span>
+              <div className="color-inline-form">
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  placeholder="2019"
+                  value={yearInput}
+                  onChange={(event) =>
+                    setYearInput(
+                      event.target.value
+                    )
+                  }
+                />
+                <button type="submit">
+                  開く
+                </button>
+              </div>
+            </form>
+          </div>
+
+          <form
+            className="color-toolbar-field"
+            onSubmit={openIssue}
+          >
+            <span>
+              号を開く（新しい号の登録もここから）
+            </span>
+            <div className="color-inline-form">
+              <input
+                type="text"
+                inputMode="numeric"
+                placeholder="50"
+                value={issueInput}
+                onChange={(event) =>
+                  setIssueInput(
+                    event.target.value
+                  )
+                }
+              />
+              <button type="submit">
+                開く
+              </button>
+            </div>
+          </form>
+
+          {formError && (
+            <div
+              className="cloud-settings-message error"
+              role="alert"
+            >
+              {formError}
+            </div>
+          )}
+
+          {isSwitching && (
+            <div className="empty-message">
+              読み込み中…
+            </div>
+          )}
+
+          {!isSwitching &&
+            issues.length === 0 && (
+              <div className="empty-message">
+                {state.year}
+                年の画像はまだありません。
+              </div>
+            )}
+
+          {!isSwitching && (
+            <div className="color-issue-grid">
+              {issues.map((issue) => {
+                const cover =
+                  pickCover(issue.images)
+
+                return (
+                  <button
+                    key={issue.folder}
+                    type="button"
+                    className="color-issue-card"
+                    onClick={() =>
+                      navigate(
+                        `/color/${slug}/${state.year}/${issue.folder}`
+                      )
+                    }
+                  >
+                    <div className="color-thumb">
+                      <CloudImage
+                        imageKey={thumbKey(
+                          slug,
+                          state.year,
+                          issue.folder,
+                          cover.file
+                        )}
+                        alt=""
+                      />
+                    </div>
+                    <span className="color-issue-label">
+                      {formatIssueFolder(
+                        issue.folder
+                      )}
+                    </span>
+                    <small>
+                      {issue.images.length}枚
+                    </small>
+                  </button>
+                )
+              })}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+export default ColorMagazinePage
