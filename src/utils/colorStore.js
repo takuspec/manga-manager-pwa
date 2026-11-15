@@ -28,7 +28,13 @@ import {
 
 const MAX_PARALLEL_DOWNLOADS = 4
 
+// 作品ごとの表示では複数の年の索引をまとめて使うので、
+// 読んだ索引を短い時間だけ覚えておき、画面を行き来しても読み直さない。
+const YEAR_INDEX_MEMO_MS = 60 * 1000
+
 const inFlight = new Map()
+const yearIndexMemo = new Map()
+let cachedRootIndex = null
 const waiting = []
 let running = 0
 
@@ -135,10 +141,18 @@ export async function loadRootIndex() {
   const result =
     await readJson(ROOT_INDEX_KEY)
 
+  cachedRootIndex =
+    normalizeRootIndex(result.data)
+
   return {
-    root: normalizeRootIndex(result.data),
+    root: cachedRootIndex,
     fromCache: result.fromCache
   }
+}
+
+// 直前に読んだ雑誌の一覧（まだ読んでいなければ null）。通信はしない。
+export function getCachedRootIndex() {
+  return cachedRootIndex
 }
 
 // 書き込みの直前に最新を読み直してから変更を当てる。
@@ -164,25 +178,69 @@ export async function updateRootIndex(
     )
 
   await writeJson(ROOT_INDEX_KEY, next)
+  cachedRootIndex = next
   return next
 }
 
+// maxAgeMs を指定すると、その時間内に読んだ内容があれば通信せずに返す。
 export async function loadYearIndex(
   slug,
-  year
+  year,
+  { maxAgeMs = 0 } = {}
 ) {
-  const result =
-    await readJson(
-      yearIndexKey(slug, year)
-    )
+  const key = yearIndexKey(slug, year)
+  const memo = yearIndexMemo.get(key)
 
-  return {
+  if (
+    memo &&
+    maxAgeMs > 0 &&
+    Date.now() - memo.time < maxAgeMs
+  ) {
+    return memo.value
+  }
+
+  const result = await readJson(key)
+
+  const value = {
     index: normalizeYearIndex(
       result.data,
       slug,
       year
     ),
     fromCache: result.fromCache
+  }
+
+  yearIndexMemo.set(key, {
+    time: Date.now(),
+    value
+  })
+
+  return value
+}
+
+// 複数の年の索引をまとめて読む（作品ごとの表示用）
+export async function loadYearIndexes(
+  slug,
+  years
+) {
+  const results =
+    await Promise.all(
+      years.map((year) =>
+        schedule(() =>
+          loadYearIndex(slug, year, {
+            maxAgeMs: YEAR_INDEX_MEMO_MS
+          })
+        )
+      )
+    )
+
+  return {
+    indexes: results.map(
+      (result) => result.index
+    ),
+    fromCache: results.some(
+      (result) => result.fromCache
+    )
   }
 }
 
@@ -215,6 +273,15 @@ export async function updateYearIndex(
     )
 
   await writeJson(key, next)
+
+  yearIndexMemo.set(key, {
+    time: Date.now(),
+    value: {
+      index: next,
+      fromCache: false
+    }
+  })
+
   return next
 }
 
@@ -280,7 +347,9 @@ export async function uploadImages({
     )
 
   for (const item of prepared) {
-    const file = buildFileName(seq, kind)
+    // 種類は1枚ごとに決められる。指定がなければ全体の指定を使う。
+    const itemKind = item.kind || kind
+    const file = buildFileName(seq, itemKind)
 
     try {
       const fullKey =
@@ -307,7 +376,8 @@ export async function uploadImages({
       added.push({
         file,
         seq,
-        kind,
+        kind: itemKind,
+        series: item.series || [],
         width: item.width,
         height: item.height,
         bytes: item.full.size,

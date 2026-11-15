@@ -4,11 +4,14 @@ import {
   useSearchParams
 } from 'react-router-dom'
 import CloudImage from '../components/CloudImage'
+import CropSettings from '../components/CropSettings'
 import {
   loadRootIndex,
-  loadYearIndex
+  loadYearIndex,
+  loadYearIndexes
 } from '../utils/colorStore'
 import {
+  collectSeries,
   formatIssueFolder,
   issueFolder,
   listIssues,
@@ -37,6 +40,12 @@ function ColorMagazinePage({ navigate }) {
   const requestedYear =
     normalizeYear(searchParams.get('y'))
 
+  // 表示の切り替え。号ごと（issues）か、作品ごと（series）。
+  const view =
+    searchParams.get('v') === 'series'
+      ? 'series'
+      : 'issues'
+
   const [state, setState] =
     useState({
       status: 'loading',
@@ -44,6 +53,7 @@ function ColorMagazinePage({ navigate }) {
       magazine: null,
       year: 0,
       index: null,
+      seriesGroups: [],
       fromCache: false,
       error: ''
     })
@@ -55,7 +65,8 @@ function ColorMagazinePage({ navigate }) {
   const [formError, setFormError] =
     useState('')
 
-  const loadKey = `${slug}:${requestedYear}`
+  const loadKey =
+    `${slug}:${requestedYear}:${view}`
 
   useEffect(() => {
     if (!slug) {
@@ -84,6 +95,29 @@ function ColorMagazinePage({ navigate }) {
         magazine.years[0] ||
         new Date().getFullYear()
 
+      if (view === 'series') {
+        const result =
+          await loadYearIndexes(
+            slug,
+            magazine.years
+          )
+
+        return {
+          status: 'ready',
+          key: loadKey,
+          magazine,
+          year,
+          index: null,
+          seriesGroups: collectSeries(
+            result.indexes
+          ),
+          fromCache:
+            rootResult.fromCache ||
+            result.fromCache,
+          error: ''
+        }
+      }
+
       const yearResult =
         await loadYearIndex(slug, year)
 
@@ -93,6 +127,7 @@ function ColorMagazinePage({ navigate }) {
         magazine,
         year,
         index: yearResult.index,
+        seriesGroups: [],
         fromCache:
           rootResult.fromCache ||
           yearResult.fromCache,
@@ -114,6 +149,7 @@ function ColorMagazinePage({ navigate }) {
             magazine: null,
             year: 0,
             index: null,
+            seriesGroups: [],
             fromCache: false,
             error:
               error?.message ||
@@ -125,7 +161,7 @@ function ColorMagazinePage({ navigate }) {
     return () => {
       active = false
     }
-  }, [slug, requestedYear, loadKey])
+  }, [slug, requestedYear, view, loadKey])
 
   const isSwitching =
     state.status === 'ready' &&
@@ -147,6 +183,27 @@ function ColorMagazinePage({ navigate }) {
       ? listIssues(state.index).reverse()
       : []
 
+  const updateSearch = (changes) => {
+    const next = {}
+
+    const year =
+      changes.y ?? (state.year || '')
+
+    const nextView = changes.v ?? view
+
+    if (year) {
+      next.y = String(year)
+    }
+
+    if (nextView === 'series') {
+      next.v = 'series'
+    }
+
+    setSearchParams(next, {
+      replace: true
+    })
+  }
+
   const openYear = (value) => {
     const year = normalizeYear(value)
 
@@ -159,14 +216,7 @@ function ColorMagazinePage({ navigate }) {
 
     setFormError('')
     setYearInput('')
-    setSearchParams(
-      {
-        y: String(year)
-      },
-      {
-        replace: true
-      }
-    )
+    updateSearch({ y: year })
   }
 
   const openIssue = (event) => {
@@ -237,79 +287,138 @@ function ColorMagazinePage({ navigate }) {
             </div>
           )}
 
-          <div className="color-toolbar">
-            <label className="color-toolbar-field">
-              <span>年</span>
-              <select
-                value={state.year}
-                onChange={(event) =>
-                  openYear(
-                    event.target.value
-                  )
-                }
-              >
-                {yearOptions.map((year) => (
-                  <option
-                    key={year}
-                    value={year}
-                  >
-                    {year}年
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <form
-              className="color-toolbar-field"
-              onSubmit={(event) => {
-                event.preventDefault()
-                openYear(yearInput)
-              }}
+          <div
+            className="color-view-switch"
+            role="group"
+            aria-label="表示の切り替え"
+          >
+            <button
+              type="button"
+              className={
+                view === 'issues'
+                  ? 'active'
+                  : ''
+              }
+              aria-pressed={view === 'issues'}
+              onClick={() =>
+                updateSearch({ v: 'issues' })
+              }
             >
-              <span>ほかの年</span>
-              <div className="color-inline-form">
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  placeholder="2019"
-                  value={yearInput}
-                  onChange={(event) =>
-                    setYearInput(
-                      event.target.value
-                    )
-                  }
-                />
-                <button type="submit">
-                  開く
-                </button>
-              </div>
-            </form>
+              号ごと
+            </button>
+
+            <button
+              type="button"
+              className={
+                view === 'series'
+                  ? 'active'
+                  : ''
+              }
+              aria-pressed={view === 'series'}
+              onClick={() =>
+                updateSearch({ v: 'series' })
+              }
+            >
+              作品ごと
+            </button>
           </div>
 
-          <form
-            className="color-toolbar-field"
-            onSubmit={openIssue}
-          >
-            <span>
-              号を開く（新しい号の登録もここから）
-            </span>
-            <div className="color-inline-form">
-              <input
-                type="text"
-                inputMode="numeric"
-                placeholder="50"
-                value={issueInput}
-                onChange={(event) =>
-                  setIssueInput(
-                    event.target.value
-                  )
-                }
-              />
-              <button type="submit">
-                開く
-              </button>
-            </div>
-          </form>
+          {view === 'issues' && (
+            <>
+              <div className="color-toolbar">
+                <label className="color-toolbar-field">
+                  <span>年</span>
+                  <select
+                    value={state.year}
+                    onChange={(event) =>
+                      openYear(
+                        event.target.value
+                      )
+                    }
+                  >
+                    {yearOptions.map(
+                      (year) => (
+                        <option
+                          key={year}
+                          value={year}
+                        >
+                          {year}年
+                        </option>
+                      )
+                    )}
+                  </select>
+                </label>
+
+                <form
+                  className="color-toolbar-field"
+                  onSubmit={(event) => {
+                    event.preventDefault()
+                    openYear(yearInput)
+                  }}
+                >
+                  <span>ほかの年</span>
+                  <div className="color-inline-form">
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      placeholder="2019"
+                      aria-label="ほかの年"
+                      value={yearInput}
+                      onChange={(event) =>
+                        setYearInput(
+                          event.target.value
+                        )
+                      }
+                    />
+                    <button type="submit">
+                      開く
+                    </button>
+                  </div>
+                </form>
+              </div>
+
+              <form
+                className="color-toolbar-field"
+                onSubmit={openIssue}
+              >
+                <span>
+                  号を開く（新しい号の登録もここから）
+                </span>
+                <div className="color-inline-form">
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    placeholder="50"
+                    aria-label="号"
+                    value={issueInput}
+                    onChange={(event) =>
+                      setIssueInput(
+                        event.target.value
+                      )
+                    }
+                  />
+                  <button type="submit">
+                    開く
+                  </button>
+                </div>
+              </form>
+
+              {!state.fromCache && (
+                <CropSettings
+                  key={state.magazine.slug}
+                  magazine={state.magazine}
+                  onSaved={(magazine) => {
+                    if (magazine) {
+                      setState((current) => ({
+                        ...current,
+                        magazine
+                      }))
+                    }
+                  }}
+                />
+              )}
+            </>
+          )}
 
           {formError && (
             <div
@@ -327,6 +436,7 @@ function ColorMagazinePage({ navigate }) {
           )}
 
           {!isSwitching &&
+            view === 'issues' &&
             issues.length === 0 && (
               <div className="empty-message">
                 {state.year}
@@ -334,47 +444,97 @@ function ColorMagazinePage({ navigate }) {
               </div>
             )}
 
-          {!isSwitching && (
-            <div className="color-issue-grid">
-              {issues.map((issue) => {
-                const cover =
-                  pickCover(issue.images)
+          {!isSwitching &&
+            view === 'issues' && (
+              <div className="color-issue-grid">
+                {issues.map((issue) => {
+                  const cover =
+                    pickCover(issue.images)
 
-                return (
-                  <button
-                    key={issue.folder}
-                    type="button"
-                    className="color-issue-card"
-                    onClick={() =>
-                      navigate(
-                        `/color/${slug}/${state.year}/${issue.folder}`
-                      )
-                    }
-                  >
-                    <div className="color-thumb">
-                      <CloudImage
-                        imageKey={thumbKey(
-                          slug,
-                          state.year,
-                          issue.folder,
-                          cover.file
+                  return (
+                    <button
+                      key={issue.folder}
+                      type="button"
+                      className="color-issue-card"
+                      onClick={() =>
+                        navigate(
+                          `/color/${slug}/${state.year}/${issue.folder}`
+                        )
+                      }
+                    >
+                      <div className="color-thumb">
+                        <CloudImage
+                          imageKey={thumbKey(
+                            slug,
+                            state.year,
+                            issue.folder,
+                            cover.file
+                          )}
+                          alt=""
+                        />
+                      </div>
+                      <span className="color-issue-label">
+                        {formatIssueFolder(
+                          issue.folder
                         )}
-                        alt=""
-                      />
-                    </div>
-                    <span className="color-issue-label">
-                      {formatIssueFolder(
-                        issue.folder
-                      )}
-                    </span>
-                    <small>
-                      {issue.images.length}枚
-                    </small>
-                  </button>
-                )
-              })}
-            </div>
-          )}
+                      </span>
+                      <small>
+                        {issue.images.length}枚
+                      </small>
+                    </button>
+                  )
+                })}
+              </div>
+            )}
+
+          {!isSwitching &&
+            view === 'series' &&
+            state.seriesGroups.length ===
+              0 && (
+              <div className="empty-message">
+                作品タグの付いた画像はまだありません。号の画面で「編集」から付けられます。
+              </div>
+            )}
+
+          {!isSwitching &&
+            view === 'series' && (
+              <div className="color-issue-grid">
+                {state.seriesGroups.map(
+                  (group) => (
+                    <button
+                      key={group.title}
+                      type="button"
+                      className="color-issue-card"
+                      onClick={() =>
+                        navigate(
+                          `/color/${slug}/series/${encodeURIComponent(
+                            group.title
+                          )}`
+                        )
+                      }
+                    >
+                      <div className="color-thumb">
+                        <CloudImage
+                          imageKey={thumbKey(
+                            slug,
+                            group.cover.year,
+                            group.cover.folder,
+                            group.cover.file
+                          )}
+                          alt=""
+                        />
+                      </div>
+                      <span className="color-issue-label">
+                        {group.title}
+                      </span>
+                      <small>
+                        {group.count}枚
+                      </small>
+                    </button>
+                  )
+                )}
+              </div>
+            )}
         </div>
       )}
     </div>

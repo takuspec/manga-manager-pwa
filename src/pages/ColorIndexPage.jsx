@@ -7,7 +7,9 @@ import {
   updateRootIndex
 } from '../utils/colorStore'
 import {
+  findCropPreset,
   normalizeSlug,
+  setMagazineCrops,
   upsertMagazine
 } from '../utils/colorLibrary'
 
@@ -125,13 +127,27 @@ function ColorIndexPage({
     setFormError('')
 
     try {
+      // 測定済みの雑誌（ジャンプ・マガジン・サンデー）は、
+      // 切り落としの固定値を最初から入れておく。
+      const preset =
+        findCropPreset(cleanName, cleanSlug)
+
       const root =
-        await updateRootIndex((current) =>
-          upsertMagazine(current, {
-            slug: cleanSlug,
-            name: cleanName
-          })
-        )
+        await updateRootIndex((current) => {
+          const added =
+            upsertMagazine(current, {
+              slug: cleanSlug,
+              name: cleanName
+            })
+
+          return preset
+            ? setMagazineCrops(
+                added,
+                cleanSlug,
+                preset.crops
+              )
+            : added
+        })
 
       setState({
         status: 'ready',

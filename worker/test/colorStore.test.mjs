@@ -185,6 +185,7 @@ test('雑誌を追加して画像を登録すると、決めた場所に保存�
     {
       slug: 'jump',
       name: '週刊少年ジャンプ',
+      crops: {},
       years: [2026]
     }
   ])
@@ -402,4 +403,90 @@ test('送信の途中で失敗したら、送れた分だけ記録する', async
   } finally {
     bucket.put = realPut
   }
+})
+
+test('まとめて登録: 1枚ごとの種類と作品タグが記録される', async () => {
+  const items = prepared(3)
+
+  items[0].kind = 'cover'
+  items[1].kind = 'spread'
+  items[1].series = ['あかね噺']
+  items[2].kind = 'center'
+  items[2].series = ['あかね噺', 'ONE PIECE']
+
+  const result =
+    await store.uploadImages({
+      slug: 'jump',
+      year: 2026,
+      folder: '48',
+      prepared: items
+    })
+
+  assert.equal(result.failure, null)
+
+  assert.deepEqual(
+    result.index.issues['48'].images.map(
+      (image) => [image.file, image.series]
+    ),
+    [
+      ['01-cover.jpg', []],
+      ['02-spread.jpg', ['あかね噺']],
+      ['03-center.jpg', ['あかね噺', 'ONE PIECE']]
+    ]
+  )
+  assert.ok(
+    bucket.objects.has(
+      'jump/2026/48/02-spread.jpg'
+    )
+  )
+})
+
+test('作品ごとの表示: 複数の年をまとめて読み、短時間は読み直さない', async () => {
+  const first =
+    await store.loadYearIndexes('jump', [2026, 2019])
+
+  assert.equal(first.indexes.length, 2)
+  assert.deepEqual(
+    library
+      .listSeriesImages(first.indexes, 'あかね噺')
+      .map((image) => [
+        image.year,
+        image.folder,
+        image.file
+      ]),
+    [
+      [2026, '48', '02-spread.jpg'],
+      [2026, '48', '03-center.jpg']
+    ]
+  )
+
+  const before = requests.length
+
+  await store.loadYearIndexes('jump', [2026, 2019])
+
+  assert.equal(requests.length, before)
+
+  // タグを書き換えた直後は、新しい内容が返る
+  await store.updateYearIndex(
+    'jump',
+    2026,
+    (current) =>
+      library.setImageSeriesInIssue(
+        current,
+        '48',
+        '01-cover.jpg',
+        ['あかね噺']
+      )
+  )
+
+  const second =
+    await store.loadYearIndexes('jump', [2026, 2019])
+
+  assert.equal(
+    library.listSeriesImages(
+      second.indexes,
+      'あかね噺'
+    ).length,
+    3
+  )
 })

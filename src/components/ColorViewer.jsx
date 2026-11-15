@@ -6,6 +6,7 @@ import {
 import { createPortal } from 'react-dom'
 import { getImageBlob } from '../utils/colorStore'
 import {
+  formatIssueFolder,
   getKindLabel,
   imageKey,
   thumbKey
@@ -485,12 +486,15 @@ function ViewerStage({
   )
 }
 
+// images の各要素が year・folder を持っていればそれを使う
+// （作品ごとの表示では、号をまたいだ画像が並ぶ）。
 function ColorViewer({
   slug,
   year,
   folder,
   images,
   initialIndex,
+  showIssue = false,
   onClose
 }) {
   const [position, setPosition] =
@@ -565,6 +569,9 @@ function ColorViewer({
     return null
   }
 
+  const imageYear = image.year ?? year
+  const imageFolder = image.folder ?? folder
+
   return createPortal(
     <div
       className="color-viewer"
@@ -573,16 +580,21 @@ function ColorViewer({
       aria-label="カラーページの全画面表示"
     >
       <ViewerStage
-        key={`${image.file}:${viewport.width}x${viewport.height}`}
+        key={`${imageYear}/${imageFolder}/${image.file}:${viewport.width}x${viewport.height}`}
         slug={slug}
-        year={year}
-        folder={folder}
+        year={imageYear}
+        folder={imageFolder}
         image={image}
         viewport={viewport}
         onSwipe={move}
       />
 
       <div className="color-viewer-info">
+        {showIssue
+          ? `${imageYear}年 ${formatIssueFolder(
+              imageFolder
+            )}・`
+          : ''}
         {getKindLabel(image.kind)}・
         {index + 1} / {images.length}
         {image.width

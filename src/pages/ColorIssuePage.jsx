@@ -1,10 +1,17 @@
-import { useEffect, useState } from 'react'
+import {
+  useEffect,
+  useRef,
+  useState
+} from 'react'
 import { useParams } from 'react-router-dom'
 import CloudImage from '../components/CloudImage'
 import ColorViewer from '../components/ColorViewer'
+import SeriesTagPicker from '../components/SeriesTagPicker'
 import prepareImage from '../utils/prepareImage'
 import {
   deleteImageFiles,
+  getCachedRootIndex,
+  loadRootIndex,
   loadYearIndex,
   updateYearIndex,
   uploadImages
@@ -19,13 +26,70 @@ import {
   parseIssueFolder,
   removeImageFromIssue,
   setImageKindInIssue,
+  setImageSeriesInIssue,
+  suggestKinds,
   thumbKey
 } from '../utils/colorLibrary'
 
 // 1回に選べる枚数。選び間違いで大量に送ってしまうのを防ぐ。
 const MAX_FILES_PER_BATCH = 30
 
-function ColorIssuePage({ navigate }) {
+// 作品タグの候補。この雑誌の作品を先に、ほかの雑誌の作品を後ろに並べる。
+function buildSeriesChoices(
+  seriesList,
+  magazineList,
+  slug
+) {
+  const magazineName =
+    getCachedRootIndex()?.magazines.find(
+      (magazine) => magazine.slug === slug
+    )?.name
+
+  const localMagazineId =
+    magazineList.find(
+      (magazine) =>
+        magazine.name === magazineName
+    )?.id
+
+  const byTitle = (a, b) =>
+    a.localeCompare(b, 'ja')
+
+  const titlesOf = (list) =>
+    list
+      .map((series) =>
+        String(series.title || '').trim()
+      )
+      .filter(Boolean)
+      .sort(byTitle)
+
+  const own =
+    titlesOf(
+      seriesList.filter(
+        (series) =>
+          series.magazineId ===
+          localMagazineId
+      )
+    )
+
+  const others =
+    titlesOf(
+      seriesList.filter(
+        (series) =>
+          series.magazineId !==
+          localMagazineId
+      )
+    )
+
+  return Array.from(
+    new Set([...own, ...others])
+  )
+}
+
+function ColorIssuePage({
+  seriesList,
+  magazineList,
+  navigate
+}) {
   const params = useParams()
 
   const slug = normalizeSlug(params.slug)
@@ -54,12 +118,50 @@ function ColorIssuePage({ navigate }) {
   const [viewerIndex, setViewerIndex] =
     useState(null)
 
+  // 選んだ画像の、登録前の確認用の一覧
+  const [pending, setPending] =
+    useState(null)
+
+  // 作品タグを選んでいる対象
+  // { type: 'pending', id } または { type: 'saved', file }
+  const [tagTarget, setTagTarget] =
+    useState(null)
+
+  const pendingFilesRef = useRef([])
+  const previewUrlsRef = useRef([])
+
+  const releasePreviews = () => {
+    previewUrlsRef.current.forEach((url) => {
+      URL.revokeObjectURL(url)
+    })
+    previewUrlsRef.current = []
+  }
+
+  useEffect(() => {
+    return () => {
+      previewUrlsRef.current.forEach(
+        (url) => {
+          URL.revokeObjectURL(url)
+        }
+      )
+      previewUrlsRef.current = []
+    }
+  }, [])
+
   useEffect(() => {
     if (!isValid) {
       return undefined
     }
 
     let active = true
+
+    // 切り落としの固定値と作品タグの候補に、雑誌の一覧を使う。
+    // 雑誌の画面を通ってきていれば読み込み済みなので、通信しない。
+    if (!getCachedRootIndex()) {
+      loadRootIndex().catch((error) => {
+        console.error(error)
+      })
+    }
 
     loadYearIndex(slug, year)
       .then((result) => {
@@ -108,10 +210,93 @@ function ColorIssuePage({ navigate }) {
     })
   }
 
-  const handleFiles = async (
-    event,
-    kind
+  const clearPending = () => {
+    releasePreviews()
+    pendingFilesRef.current = []
+    setPending(null)
+  }
+
+  // 選んだ画像を登録用に整え、確認用の一覧を作る。
+  // keep を渡すと、種類と作品タグは前の一覧のものを引き継ぐ
+  // （切り落としの設定だけを変えてやり直すとき）。
+  const buildPending = async (
+    files,
+    trim,
+    keep
   ) => {
+    setMessage(null)
+
+    try {
+      const prepared = []
+
+      // この雑誌に固定の切り落とし範囲があれば、それを使う
+      const crops =
+        getCachedRootIndex()?.magazines.find(
+          (magazine) =>
+            magazine.slug === slug
+        )?.crops
+
+      for (const file of files) {
+        setBusy(
+          `準備中 ${prepared.length + 1} / ${files.length}`
+        )
+        prepared.push(
+          await prepareImage(file, {
+            trim,
+            crops
+          })
+        )
+      }
+
+      const kinds =
+        suggestKinds(
+          prepared,
+          images.some(
+            (image) =>
+              image.kind === 'cover'
+          )
+        )
+
+      releasePreviews()
+
+      const items =
+        prepared.map((item, position) => {
+          const previewUrl =
+            URL.createObjectURL(item.thumb)
+
+          previewUrlsRef.current.push(
+            previewUrl
+          )
+
+          return {
+            id: `${Date.now()}-${position}`,
+            prepared: item,
+            previewUrl,
+            kind:
+              keep?.[position]?.kind ||
+              kinds[position],
+            series:
+              keep?.[position]?.series || []
+          }
+        })
+
+      pendingFilesRef.current = files
+      setPending({
+        trim,
+        items
+      })
+    } catch (error) {
+      console.error(error)
+      setMessage({
+        type: 'error',
+        text: '画像を読み込めませんでした。別の画像で試してください。'
+      })
+    } finally {
+      setBusy('')
+    }
+  }
+
+  const handleFiles = (event) => {
     const files =
       Array.from(event.target.files || [])
 
@@ -131,34 +316,79 @@ function ColorIssuePage({ navigate }) {
       return
     }
 
-    setMessage(null)
+    buildPending(files, true, null)
+  }
 
-    try {
-      const prepared = []
+  const updatePendingItem = (id, patch) => {
+    setPending((current) => {
+      return current
+        ? {
+            ...current,
+            items: current.items.map(
+              (item) =>
+                item.id === id
+                  ? {
+                      ...item,
+                      ...patch
+                    }
+                  : item
+            )
+          }
+        : current
+    })
+  }
 
-      for (const file of files) {
-        setBusy(
-          `準備中 ${prepared.length + 1} / ${files.length}`
-        )
-        prepared.push(
-          await prepareImage(file)
-        )
-      }
-
-      setBusy(
-        `送信中 0 / ${prepared.length}`
+  const removePendingItem = (id) => {
+    const position =
+      pending.items.findIndex(
+        (item) => item.id === id
       )
 
+    if (position < 0) {
+      return
+    }
+
+    pendingFilesRef.current =
+      pendingFilesRef.current.filter(
+        (_, index) => index !== position
+      )
+
+    const items =
+      pending.items.filter(
+        (item) => item.id !== id
+      )
+
+    if (items.length === 0) {
+      clearPending()
+      return
+    }
+
+    setPending({
+      ...pending,
+      items
+    })
+  }
+
+  const handleRegister = async () => {
+    const items = pending.items
+
+    setMessage(null)
+    setBusy(`送信中 0 / ${items.length}`)
+
+    try {
       const result =
         await uploadImages({
           slug,
           year,
           folder,
-          kind,
-          prepared,
+          prepared: items.map((item) => ({
+            ...item.prepared,
+            kind: item.kind,
+            series: item.series
+          })),
           onProgress: (done) => {
             setBusy(
-              `送信中 ${done} / ${prepared.length}`
+              `送信中 ${done} / ${items.length}`
             )
           }
         })
@@ -168,13 +398,25 @@ function ColorIssuePage({ navigate }) {
       }
 
       if (result.failure) {
+        // 送れなかった分だけを確認用の一覧に残す
+        const done = result.added.length
+
+        pendingFilesRef.current =
+          pendingFilesRef.current.slice(done)
+
+        setPending({
+          ...pending,
+          items: items.slice(done)
+        })
+
         setMessage({
           type: 'error',
-          text: `${prepared.length} 枚中 ${result.added.length} 枚を登録しました。残りは失敗しました: ${
+          text: `${items.length} 枚中 ${done} 枚を登録しました。残りは失敗しました: ${
             result.failure.message || ''
           }`
         })
       } else {
+        clearPending()
         setMessage({
           type: 'ok',
           text: `${result.added.length} 枚を登録しました。`
@@ -261,6 +503,38 @@ function ColorIssuePage({ navigate }) {
     }
   }
 
+  const tagValue =
+    tagTarget?.type === 'pending'
+      ? pending?.items.find(
+          (item) => item.id === tagTarget.id
+        )?.series
+      : images.find(
+          (image) =>
+            image.file === tagTarget?.file
+        )?.series
+
+  const handleTagsDone = (series) => {
+    const target = tagTarget
+
+    setTagTarget(null)
+
+    if (target.type === 'pending') {
+      updatePendingItem(target.id, {
+        series
+      })
+      return
+    }
+
+    change('保存中', (current) =>
+      setImageSeriesInIssue(
+        current,
+        folder,
+        target.file,
+        series
+      )
+    )
+  }
+
   return (
     <div className="app">
       <div className="series-page-header">
@@ -333,36 +607,153 @@ function ColorIssuePage({ navigate }) {
             </div>
           )}
 
-          {!state.fromCache && (
-            <div className="color-add">
-              <span>画像を追加</span>
-              <div className="color-chip-row">
-                {IMAGE_KINDS.map((kind) => (
-                  <label
-                    key={kind.id}
-                    className={
-                      canChange
-                        ? 'color-chip'
-                        : 'color-chip disabled'
-                    }
+          {!state.fromCache && !pending && (
+            <label
+              className={
+                canChange
+                  ? 'image-size-test-pick'
+                  : 'image-size-test-pick disabled'
+              }
+            >
+              画像をまとめて追加
+              <input
+                type="file"
+                accept="image/*"
+                multiple
+                disabled={!canChange}
+                onChange={handleFiles}
+              />
+            </label>
+          )}
+
+          {pending && (
+            <section className="cloud-settings-section">
+              <h2>
+                登録する内容の確認（
+                {pending.items.length}枚）
+              </h2>
+
+              <label className="color-check">
+                <input
+                  type="checkbox"
+                  checked={pending.trim}
+                  disabled={Boolean(busy)}
+                  onChange={(event) =>
+                    buildPending(
+                      pendingFilesRef.current,
+                      event.target.checked,
+                      pending.items
+                    )
+                  }
+                />
+                上部のバーと余白を切り落とす
+              </label>
+
+              <div className="color-pending-list">
+                {pending.items.map((item) => (
+                  <div
+                    key={item.id}
+                    className="color-pending-item"
                   >
-                    {kind.label}
-                    <input
-                      type="file"
-                      accept="image/*"
-                      multiple
-                      disabled={!canChange}
-                      onChange={(event) =>
-                        handleFiles(
-                          event,
-                          kind.id
-                        )
-                      }
-                    />
-                  </label>
+                    <div className="color-thumb">
+                      <img
+                        src={item.previewUrl}
+                        alt=""
+                      />
+                    </div>
+
+                    <div className="color-pending-fields">
+                      <select
+                        aria-label="種類"
+                        value={item.kind}
+                        disabled={Boolean(busy)}
+                        onChange={(event) =>
+                          updatePendingItem(
+                            item.id,
+                            {
+                              kind:
+                                event.target
+                                  .value
+                            }
+                          )
+                        }
+                      >
+                        {IMAGE_KINDS.map(
+                          (kind) => (
+                            <option
+                              key={kind.id}
+                              value={kind.id}
+                            >
+                              {kind.label}
+                            </option>
+                          )
+                        )}
+                      </select>
+
+                      <button
+                        type="button"
+                        className="cloud-settings-secondary"
+                        disabled={Boolean(busy)}
+                        onClick={() =>
+                          setTagTarget({
+                            type: 'pending',
+                            id: item.id
+                          })
+                        }
+                      >
+                        {item.series.length > 0
+                          ? item.series.join('、')
+                          : '作品タグを付ける'}
+                      </button>
+
+                      <small>
+                        {item.prepared.width} ×{' '}
+                        {item.prepared.height}px
+                        {item.prepared.trimmed
+                          ? item.prepared
+                              .trimMode === 'fixed'
+                            ? '（固定の範囲で切り落とし）'
+                            : '（自動判定で切り落とし）'
+                          : ''}
+                      </small>
+
+                      <button
+                        type="button"
+                        className="color-pending-remove"
+                        disabled={Boolean(busy)}
+                        onClick={() =>
+                          removePendingItem(
+                            item.id
+                          )
+                        }
+                      >
+                        この画像は登録しない
+                      </button>
+                    </div>
+                  </div>
                 ))}
               </div>
-            </div>
+
+              <div className="cloud-settings-actions">
+                <button
+                  type="button"
+                  disabled={Boolean(busy)}
+                  onClick={handleRegister}
+                >
+                  {pending.items.length}
+                  枚を登録
+                </button>
+
+                <button
+                  type="button"
+                  className="cloud-settings-secondary"
+                  disabled={Boolean(busy)}
+                  onClick={clearPending}
+                >
+                  やめる
+                </button>
+              </div>
+            </section>
           )}
 
           {busy && (
@@ -387,11 +778,12 @@ function ColorIssuePage({ navigate }) {
             </div>
           )}
 
-          {images.length === 0 && (
-            <div className="empty-message">
-              この号の画像はまだありません。上のボタンから、種類を選んで追加してください。
-            </div>
-          )}
+          {images.length === 0 &&
+            !pending && (
+              <div className="empty-message">
+                この号の画像はまだありません。上のボタンから、その号の画像をまとめて選んでください。
+              </div>
+            )}
 
           <div className="color-image-grid">
             {images.map((image, position) => (
@@ -420,13 +812,16 @@ function ColorIssuePage({ navigate }) {
                   />
                 </button>
 
-                {!isEditing && (
-                  <span className="color-kind-badge">
-                    {getKindLabel(
-                      image.kind
-                    )}
-                  </span>
-                )}
+                <span className="color-kind-badge">
+                  {getKindLabel(image.kind)}
+                </span>
+
+                {!isEditing &&
+                  image.series.length > 0 && (
+                    <span className="color-series-line">
+                      {image.series.join('、')}
+                    </span>
+                  )}
 
                 {isEditing && (
                   <div className="color-edit-controls">
@@ -459,6 +854,22 @@ function ColorIssuePage({ navigate }) {
                         )
                       )}
                     </select>
+
+                    <button
+                      type="button"
+                      className="cloud-settings-secondary"
+                      disabled={!canChange}
+                      onClick={() =>
+                        setTagTarget({
+                          type: 'saved',
+                          file: image.file
+                        })
+                      }
+                    >
+                      {image.series.length > 0
+                        ? image.series.join('、')
+                        : '作品タグを付ける'}
+                    </button>
 
                     <div className="color-edit-row">
                       <button
@@ -525,6 +936,21 @@ function ColorIssuePage({ navigate }) {
             ))}
           </div>
         </div>
+      )}
+
+      {tagTarget && (
+        <SeriesTagPicker
+          choices={buildSeriesChoices(
+            seriesList,
+            magazineList,
+            slug
+          )}
+          value={tagValue || []}
+          onDone={handleTagsDone}
+          onCancel={() =>
+            setTagTarget(null)
+          }
+        />
       )}
 
       {viewerIndex !== null &&

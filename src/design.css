@@ -851,3 +851,266 @@ button svg { flex-shrink: 0; vertical-align: middle; }
 .color-viewer-nav.next {
   right: calc(env(safe-area-inset-right, 0px) + 8px);
 }
+
+/* カラーページ: まとめて追加、作品タグ、作品ごとの表示 */
+.image-size-test-pick.disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.color-check {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  font-size: 14px;
+}
+
+.color-check input {
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+}
+
+.color-pending-list {
+  display: grid;
+  gap: 12px;
+}
+
+.color-pending-item {
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+}
+
+.color-pending-fields {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.color-pending-fields select {
+  width: 100%;
+  min-height: 44px;
+  padding: 0 10px;
+  color: var(--text);
+  font-size: 16px;
+}
+
+.color-pending-fields button {
+  min-width: 0;
+  padding: 8px 10px;
+  overflow-wrap: anywhere;
+  text-align: left;
+}
+
+.color-pending-fields small {
+  color: var(--muted);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+.color-pending-fields .color-pending-remove {
+  min-height: 36px;
+  border: 0;
+  background: transparent;
+  color: #fca5a5;
+  font-size: 12px;
+  font-weight: 400;
+}
+
+.color-series-line {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.color-edit-controls > button {
+  min-width: 0;
+  min-height: 40px;
+  padding: 6px 8px;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+  text-align: left;
+}
+
+.color-issue-label {
+  overflow-wrap: anywhere;
+}
+
+.color-chip.selected {
+  border-color: var(--accent);
+  background: #162e4c;
+}
+
+.color-view-switch {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+  padding: 3px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+
+.color-view-switch button {
+  min-height: 40px;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--muted);
+}
+
+.color-view-switch button.active {
+  background: #2267c7;
+  color: #fff;
+}
+
+.series-picker {
+  position: fixed;
+  inset: 0;
+  z-index: 10002;
+  display: flex;
+  justify-content: center;
+  background: rgba(3, 8, 18, 0.72);
+}
+
+.series-picker-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  max-width: 430px;
+  height: 100dvh;
+  padding: calc(env(safe-area-inset-top, 0px) + 14px) 16px
+    calc(env(safe-area-inset-bottom, 0px) + 14px);
+  background: var(--canvas, #0b1220);
+  color: var(--text);
+}
+
+.series-picker-header {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 10px;
+  text-align: center;
+}
+
+.series-picker-header button {
+  padding: 0 14px;
+}
+
+.series-picker-search {
+  width: 100%;
+  min-height: 44px;
+  padding: 0 12px;
+  color: var(--text);
+  font-size: 16px;
+}
+
+.series-picker-list {
+  flex: 1 1 0;
+  min-height: 0;
+  display: grid;
+  align-content: start;
+  gap: 6px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.series-picker-item {
+  min-height: 44px;
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--text);
+  font-weight: 400;
+  text-align: left;
+  overflow-wrap: anywhere;
+}
+
+.series-picker-item.selected {
+  border-color: var(--accent);
+  background: #162e4c;
+  font-weight: 650;
+}
+
+/* カラーページ: 切り落としの固定値の設定 */
+.color-crop-settings {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+}
+
+.color-crop-settings summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 44px;
+  padding: 0 14px;
+  font-size: 13px;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.color-crop-settings summary small {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 400;
+}
+
+.color-crop-body {
+  display: grid;
+  gap: 14px;
+  padding: 4px 14px 14px;
+}
+
+.color-crop-form {
+  display: grid;
+  gap: 14px;
+}
+
+.color-crop-form fieldset {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  margin: 0;
+  padding: 10px 12px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+
+.color-crop-form legend {
+  padding: 0 6px;
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.color-crop-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.color-crop-grid.two {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.color-crop-grid label {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.color-crop-grid input {
+  width: 100%;
+  min-width: 0;
+  min-height: 44px;
+  padding: 0 8px;
+  color: var(--text);
+  font-size: 16px;
+  font-variant-numeric: tabular-nums;
+}

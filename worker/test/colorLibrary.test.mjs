@@ -1,14 +1,21 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import {
+  CROP_PRESETS,
+  findCropPreset,
+  normalizeCrop,
+  pickCropBox,
+  setMagazineCrops,
   addImagesToIssue,
   addYearToMagazine,
   buildFileName,
+  collectSeries,
   compareIssueFolders,
   formatIssueFolder,
   imageKey,
   issueFolder,
   listIssues,
+  listSeriesImages,
   moveImageInIssue,
   nextSequence,
   normalizeRootIndex,
@@ -17,6 +24,8 @@ import {
   parseIssueLabel,
   removeImageFromIssue,
   setImageKindInIssue,
+  setImageSeriesInIssue,
+  suggestKinds,
   thumbKey,
   upsertMagazine,
   yearIndexKey
@@ -145,6 +154,7 @@ test('雑誌の一覧: 追加・改名・年の追加', () => {
       {
         slug: 'jump',
         name: 'ジャンプ',
+        crops: {},
         years: [2026, 2025]
       }
     ]
@@ -294,4 +304,263 @@ test('号は番号順に並ぶ。壊れた索引は安全に読み飛ばす', ()
       ['50', 1]
     ]
   )
+})
+
+test('種類の初期値: 横長は見開き、縦長は表紙→センターカラー', () => {
+  const portrait = { width: 1872, height: 2732 }
+  const landscape = { width: 2732, height: 1994 }
+
+  assert.deepEqual(
+    suggestKinds([
+      portrait,
+      landscape,
+      landscape,
+      portrait,
+      portrait,
+      portrait
+    ]),
+    [
+      'cover',
+      'spread',
+      'spread',
+      'center',
+      'center',
+      'center'
+    ]
+  )
+
+  // すでに表紙がある号では、縦長はすべてセンターカラー
+  assert.deepEqual(
+    suggestKinds([portrait, landscape], true),
+    ['center', 'spread']
+  )
+
+  // 見開きから選び始めても、最初の縦長が表紙になる
+  assert.deepEqual(
+    suggestKinds([landscape, portrait]),
+    ['spread', 'cover']
+  )
+})
+
+test('作品タグ: 付け外しと、作品ごとの集計', () => {
+  let y2026 =
+    normalizeYearIndex(null, 'jump', 2026)
+  let y2025 =
+    normalizeYearIndex(null, 'jump', 2025)
+
+  y2026 =
+    addImagesToIssue(
+      y2026,
+      '50',
+      [
+        {
+          ...image(1, 'cover'),
+          series: [
+            'あかね噺',
+            ' ONE PIECE ',
+            'あかね噺',
+            ''
+          ]
+        },
+        image(2, 'spread')
+      ],
+      NOW
+    )
+  y2026 =
+    addImagesToIssue(
+      y2026,
+      '07',
+      [{ ...image(1, 'center'), series: ['あかね噺'] }],
+      NOW
+    )
+  y2025 =
+    addImagesToIssue(
+      y2025,
+      '30',
+      [{ ...image(1, 'spread'), series: ['あかね噺'] }],
+      NOW
+    )
+
+  // 空白や重複は整理される。タグのない画像は空の一覧になる。
+  assert.deepEqual(
+    y2026.issues['50'].images.map((i) => i.series),
+    [['あかね噺', 'ONE PIECE'], []]
+  )
+
+  y2026 =
+    setImageSeriesInIssue(
+      y2026,
+      '50',
+      '02-spread.jpg',
+      ['あかね噺'],
+      NOW
+    )
+
+  assert.deepEqual(
+    collectSeries([y2025, y2026]),
+    [
+      {
+        title: 'あかね噺',
+        count: 4,
+        cover: {
+          year: 2026,
+          folder: '50',
+          file: '01-cover.jpg'
+        }
+      },
+      {
+        title: 'ONE PIECE',
+        count: 1,
+        cover: {
+          year: 2026,
+          folder: '50',
+          file: '01-cover.jpg'
+        }
+      }
+    ].sort((a, b) =>
+      a.title.localeCompare(b.title, 'ja')
+    )
+  )
+
+  // 新しい号から順に並ぶ
+  assert.deepEqual(
+    listSeriesImages([y2025, y2026], 'あかね噺').map(
+      (i) => [i.year, i.folder, i.file]
+    ),
+    [
+      [2026, '50', '01-cover.jpg'],
+      [2026, '50', '02-spread.jpg'],
+      [2026, '07', '01-center.jpg'],
+      [2025, '30', '01-spread.jpg']
+    ]
+  )
+
+  y2026 =
+    setImageSeriesInIssue(
+      y2026,
+      '50',
+      '01-cover.jpg',
+      [],
+      NOW
+    )
+
+  assert.deepEqual(
+    collectSeries([y2026]).map((s) => [
+      s.title,
+      s.count
+    ]),
+    [['あかね噺', 2]]
+  )
+})
+
+test('切り落としの固定値: 雑誌と縦横で決まった範囲になる', () => {
+  const byId = (id) =>
+    CROP_PRESETS.find((preset) => preset.id === id)
+      .crops
+
+  // 実際のスクリーンショットから測った範囲と一致する
+  assert.deepEqual(
+    pickCropBox(byId('jump'), 2048, 2732),
+    { x: 88, y: 0, width: 1872, height: 2732 }
+  )
+  assert.deepEqual(
+    pickCropBox(byId('jump'), 2732, 2048),
+    { x: 0, y: 27, width: 2732, height: 1994 }
+  )
+  assert.deepEqual(
+    pickCropBox(byId('magazine'), 2048, 2732),
+    { x: 112, y: 64, width: 1824, height: 2618 }
+  )
+  assert.deepEqual(
+    pickCropBox(byId('magazine'), 2732, 2048),
+    { x: 18, y: 64, width: 2696, height: 1934 }
+  )
+  assert.deepEqual(
+    pickCropBox(byId('sunday'), 2048, 2732),
+    { x: 73, y: 0, width: 1902, height: 2732 }
+  )
+  assert.deepEqual(
+    pickCropBox(byId('sunday'), 2732, 2048),
+    { x: 0, y: 43, width: 2732, height: 1962 }
+  )
+
+  // 同じ縦横比で解像度だけ違う画像は、同じ割合で切る
+  assert.deepEqual(
+    pickCropBox(byId('jump'), 1024, 1366),
+    { x: 44, y: 0, width: 936, height: 1366 }
+  )
+
+  // 縦横比が違う画像（別の端末など）には使わない
+  assert.equal(
+    pickCropBox(byId('jump'), 1179, 2556),
+    null
+  )
+  assert.equal(pickCropBox({}, 2048, 2732), null)
+  assert.equal(pickCropBox(null, 2048, 2732), null)
+})
+
+test('切り落としの固定値: 検査と保存', () => {
+  assert.equal(normalizeCrop(null), null)
+  assert.equal(
+    normalizeCrop({
+      width: 2048,
+      height: 2732,
+      top: -1,
+      right: 0,
+      bottom: 0,
+      left: 0
+    }),
+    null
+  )
+  // 半分以上を切る値は受け付けない
+  assert.equal(
+    normalizeCrop({
+      width: 2048,
+      height: 2732,
+      top: 0,
+      right: 600,
+      bottom: 0,
+      left: 600
+    }),
+    null
+  )
+
+  assert.equal(
+    findCropPreset('週刊少年ジャンプ', 'wj').id,
+    'jump'
+  )
+  assert.equal(
+    findCropPreset('週刊少年サンデー', 'ws').id,
+    'sunday'
+  )
+  assert.equal(
+    findCropPreset('週刊誌', 'magazine').id,
+    'magazine'
+  )
+  assert.equal(findCropPreset('ハルタ', 'harta'), null)
+
+  let root =
+    upsertMagazine(normalizeRootIndex(null), {
+      slug: 'jump',
+      name: '週刊少年ジャンプ'
+    })
+
+  root =
+    setMagazineCrops(root, 'jump', {
+      ...CROP_PRESETS[0].crops,
+      landscape: { width: 'x' }
+    })
+
+  // 使える方だけ保存され、読み直しても保たれる
+  assert.deepEqual(
+    normalizeRootIndex(
+      JSON.parse(JSON.stringify(root))
+    ).magazines[0].crops,
+    {
+      portrait: CROP_PRESETS[0].crops.portrait
+    }
+  )
+
+  root = setMagazineCrops(root, 'jump', {})
+  assert.deepEqual(root.magazines[0].crops, {})
 })

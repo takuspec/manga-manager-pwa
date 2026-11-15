@@ -28,6 +28,7 @@ import CloudSettingsPage from './pages/CloudSettingsPage'
 import ColorIndexPage from './pages/ColorIndexPage'
 import ColorMagazinePage from './pages/ColorMagazinePage'
 import ColorIssuePage from './pages/ColorIssuePage'
+import ColorSeriesPage from './pages/ColorSeriesPage'
 
 import {
   getEstimatedLatestIssue,
@@ -668,9 +669,20 @@ function App() {
       />
 
       <Route
+        path="/color/:slug/series/:title"
+        element={
+          <ColorSeriesPage
+            navigate={navigate}
+          />
+        }
+      />
+
+      <Route
         path="/color/:slug/:year/:issue"
         element={
           <ColorIssuePage
+            seriesList={seriesList}
+            magazineList={magazineList}
             navigate={navigate}
           />
         }

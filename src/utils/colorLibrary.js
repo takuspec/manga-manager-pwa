@@ -205,6 +205,203 @@ export function nextSequence(images) {
   )
 }
 
+// ---- 切り落としの固定値 ----
+//
+// 雑誌ごとにページの縦横比は決まっているので、スクリーンショットから
+// 除く範囲も「雑誌 × 縦長／横長」で固定できる。
+// 値は「元画像の大きさ」と「上下左右から除く幅（px）」で持つ。
+
+// iPad（2048×2732）のスクリーンショットで実測した値
+export const CROP_PRESETS = [
+  {
+    id: 'jump',
+    label: 'ジャンプ',
+    keywords: ['ジャンプ', 'jump'],
+    crops: {
+      portrait: {
+        width: 2048,
+        height: 2732,
+        top: 0,
+        right: 88,
+        bottom: 0,
+        left: 88
+      },
+      landscape: {
+        width: 2732,
+        height: 2048,
+        top: 27,
+        right: 0,
+        bottom: 27,
+        left: 0
+      }
+    }
+  },
+  {
+    id: 'magazine',
+    label: 'マガジン',
+    keywords: ['マガジン', 'magazine'],
+    crops: {
+      portrait: {
+        width: 2048,
+        height: 2732,
+        top: 64,
+        right: 112,
+        bottom: 50,
+        left: 112
+      },
+      landscape: {
+        width: 2732,
+        height: 2048,
+        top: 64,
+        right: 18,
+        bottom: 50,
+        left: 18
+      }
+    }
+  },
+  {
+    id: 'sunday',
+    label: 'サンデー',
+    keywords: ['サンデー', 'sunday'],
+    crops: {
+      portrait: {
+        width: 2048,
+        height: 2732,
+        top: 0,
+        right: 73,
+        bottom: 0,
+        left: 73
+      },
+      landscape: {
+        width: 2732,
+        height: 2048,
+        top: 43,
+        right: 0,
+        bottom: 43,
+        left: 0
+      }
+    }
+  }
+]
+
+export function findCropPreset(name, slug) {
+  const text =
+    `${name || ''} ${slug || ''}`.toLowerCase()
+
+  return (
+    CROP_PRESETS.find((preset) =>
+      preset.keywords.some((keyword) =>
+        text.includes(keyword.toLowerCase())
+      )
+    ) || null
+  )
+}
+
+// 1つ分の固定値を検査する。使えない値なら null。
+export function normalizeCrop(value) {
+  const numbers = {}
+
+  for (const name of [
+    'width',
+    'height',
+    'top',
+    'right',
+    'bottom',
+    'left'
+  ]) {
+    const number = Number(value?.[name])
+
+    if (
+      !Number.isInteger(number) ||
+      number < 0
+    ) {
+      return null
+    }
+
+    numbers[name] = number
+  }
+
+  // 切った後に半分も残らない値は、入力の誤りとみなす
+  if (
+    numbers.width < 16 ||
+    numbers.height < 16 ||
+    numbers.left + numbers.right >
+      numbers.width / 2 ||
+    numbers.top + numbers.bottom >
+      numbers.height / 2
+  ) {
+    return null
+  }
+
+  return numbers
+}
+
+export function normalizeCrops(value) {
+  const crops = {}
+
+  for (const orientation of [
+    'portrait',
+    'landscape'
+  ]) {
+    const crop =
+      normalizeCrop(value?.[orientation])
+
+    if (crop) {
+      crops[orientation] = crop
+    }
+  }
+
+  return crops
+}
+
+// 画像の大きさに合う固定値から、残す範囲を求める。
+// 固定値がない、または元画像の縦横比が違うとき（別の端末で撮ったなど）は null。
+export function pickCropBox(
+  crops,
+  width,
+  height
+) {
+  const crop =
+    normalizeCrop(
+      crops?.[
+        width > height
+          ? 'landscape'
+          : 'portrait'
+      ]
+    )
+
+  if (!crop || !width || !height) {
+    return null
+  }
+
+  const scaleX = width / crop.width
+  const scaleY = height / crop.height
+
+  // 同じ縦横比なら、解像度が違っても同じ割合で切る
+  if (
+    Math.abs(scaleX - scaleY) >
+    0.01 * Math.max(scaleX, scaleY)
+  ) {
+    return null
+  }
+
+  const x = Math.round(crop.left * scaleX)
+  const y = Math.round(crop.top * scaleY)
+
+  return {
+    x,
+    y,
+    width:
+      width -
+      x -
+      Math.round(crop.right * scaleX),
+    height:
+      height -
+      y -
+      Math.round(crop.bottom * scaleY)
+  }
+}
+
 // ---- 雑誌の一覧（index.json） ----
 
 export function normalizeRootIndex(data) {
@@ -225,6 +422,7 @@ export function normalizeRootIndex(data) {
       name:
         String(item.name || '').trim() ||
         slug,
+      crops: normalizeCrops(item.crops),
       years: Array.from(
         new Set(
           (item.years || [])
@@ -267,8 +465,28 @@ export function upsertMagazine(
     next.magazines.push({
       slug: cleanSlug,
       name: cleanName,
+      crops: {},
       years: []
     })
+  }
+
+  return next
+}
+
+export function setMagazineCrops(
+  root,
+  slug,
+  crops
+) {
+  const next = normalizeRootIndex(root)
+
+  const magazine =
+    next.magazines.find(
+      (item) => item.slug === slug
+    )
+
+  if (magazine) {
+    magazine.crops = normalizeCrops(crops)
   }
 
   return next
@@ -303,6 +521,38 @@ export function addYearToMagazine(
 
 // ---- 年ごとの索引（<雑誌>/<年>/index.json） ----
 
+const MAX_SERIES_TAGS = 10
+const MAX_SERIES_TITLE_LENGTH = 100
+
+// 画像に付ける作品タグ。作品名そのものを記録する
+// （端末ごとに作品の内部番号が違っても、同じ作品として扱えるように）。
+export function normalizeSeriesTags(value) {
+  const seen = new Set()
+  const tags = []
+
+  for (const item of Array.isArray(value)
+    ? value
+    : []) {
+    const title =
+      String(item ?? '')
+        .trim()
+        .slice(0, MAX_SERIES_TITLE_LENGTH)
+
+    if (!title || seen.has(title)) {
+      continue
+    }
+
+    seen.add(title)
+    tags.push(title)
+
+    if (tags.length >= MAX_SERIES_TAGS) {
+      break
+    }
+  }
+
+  return tags
+}
+
 function normalizeImage(image) {
   const file = String(image?.file || '')
 
@@ -319,7 +569,8 @@ function normalizeImage(image) {
     width: Number(image.width) || 0,
     height: Number(image.height) || 0,
     bytes: Number(image.bytes) || 0,
-    addedAt: String(image.addedAt || '')
+    addedAt: String(image.addedAt || ''),
+    series: normalizeSeriesTags(image.series)
   }
 }
 
@@ -508,6 +759,132 @@ export function setImageKindInIssue(
     },
     now
   )
+}
+
+export function setImageSeriesInIssue(
+  index,
+  folder,
+  fileName,
+  series,
+  now = new Date().toISOString()
+) {
+  return updateIssue(
+    index,
+    folder,
+    (current) => {
+      return current.map((image) => {
+        return image.file === fileName
+          ? {
+              ...image,
+              series:
+                normalizeSeriesTags(series)
+            }
+          : image
+      })
+    },
+    now
+  )
+}
+
+// まとめて取り込むときの種類の初期値。
+// 横長は見開き。縦長は、その号にまだ表紙がなければ最初の1枚を表紙、
+// 残りをセンターカラーにする。登録前に画面で直せる。
+export function suggestKinds(
+  sizes,
+  hasCover = false
+) {
+  let coverAssigned = hasCover
+
+  return sizes.map((size) => {
+    if (size.width > size.height * 1.1) {
+      return 'spread'
+    }
+
+    if (!coverAssigned) {
+      coverAssigned = true
+      return 'cover'
+    }
+
+    return 'center'
+  })
+}
+
+// 複数の年の索引を、新しい号から順にたどる
+function walkImages(yearIndexes, visit) {
+  const sorted =
+    [...yearIndexes].sort(
+      (a, b) => b.year - a.year
+    )
+
+  for (const index of sorted) {
+    const folders =
+      Object.keys(index.issues || {}).sort(
+        (a, b) => compareIssueFolders(b, a)
+      )
+
+    for (const folder of folders) {
+      for (const image of index.issues[folder]
+        .images) {
+        visit(image, index.year, folder)
+      }
+    }
+  }
+}
+
+// タグの付いた作品の一覧（枚数と、いちばん新しい1枚）
+export function collectSeries(yearIndexes) {
+  const found = new Map()
+
+  walkImages(
+    yearIndexes,
+    (image, year, folder) => {
+      for (const title of image.series) {
+        const entry = found.get(title)
+
+        if (entry) {
+          entry.count += 1
+        } else {
+          found.set(title, {
+            title,
+            count: 1,
+            cover: {
+              year,
+              folder,
+              file: image.file
+            }
+          })
+        }
+      }
+    }
+  )
+
+  return Array.from(found.values()).sort(
+    (a, b) =>
+      a.title.localeCompare(b.title, 'ja')
+  )
+}
+
+// ある作品のタグが付いた画像を、新しい号から順に並べる
+export function listSeriesImages(
+  yearIndexes,
+  title
+) {
+  const images = []
+
+  walkImages(
+    yearIndexes,
+    (image, year, folder) => {
+      if (image.series.includes(title)) {
+        images.push({
+          ...image,
+          year,
+          folder
+        })
+      }
+    }
+  )
+
+  return images
 }
 
 export function listIssues(index) {
