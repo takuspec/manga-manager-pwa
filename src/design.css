@@ -229,3 +229,145 @@ button svg { flex-shrink: 0; vertical-align: middle; }
   color: #9ca3af;
   font-size: 11px;
 }
+
+/* 画質の見比べ（設定メニューから開くテスト用ページ） */
+.image-size-test {
+  display: grid;
+  gap: 14px;
+  padding: 4px 0 24px;
+}
+
+.image-size-test-note {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.image-size-test-pick {
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-height: 48px;
+  border-radius: 10px;
+  background: #2267c7;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.image-size-test-pick input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.image-size-test-pick:focus-within {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
+.image-size-test-list {
+  display: grid;
+  gap: 10px;
+}
+
+.image-size-test-meta {
+  display: block;
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+}
+
+.image-compare-viewer {
+  position: fixed;
+  inset: 0;
+  z-index: 10001;
+  background: #000;
+  overflow: hidden;
+  overscroll-behavior: contain;
+}
+
+.image-compare-stage {
+  position: absolute;
+  inset: 0;
+  touch-action: none;
+  cursor: grab;
+}
+
+.image-compare-image {
+  position: absolute;
+  max-width: none;
+  max-height: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-user-drag: none;
+  pointer-events: none;
+}
+
+.image-compare-info {
+  position: absolute;
+  top: calc(env(safe-area-inset-top, 0px) + 10px);
+  left: calc(env(safe-area-inset-left, 0px) + 10px);
+  right: calc(env(safe-area-inset-right, 0px) + 64px);
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: rgba(17, 24, 39, 0.78);
+  color: #f9fafb;
+  font-size: 12px;
+  line-height: 1.6;
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+}
+
+.image-compare-close {
+  position: absolute;
+  top: calc(env(safe-area-inset-top, 0px) + 10px);
+  right: calc(env(safe-area-inset-right, 0px) + 10px);
+  width: 44px;
+  height: 44px;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(17, 24, 39, 0.78);
+  color: #fff;
+  font-size: 26px;
+  line-height: 1;
+}
+
+.image-compare-sizes {
+  position: absolute;
+  left: calc(env(safe-area-inset-left, 0px) + 10px);
+  right: calc(env(safe-area-inset-right, 0px) + 10px);
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 10px);
+  display: flex;
+  gap: 6px;
+  padding: 6px;
+  border-radius: 14px;
+  background: rgba(17, 24, 39, 0.78);
+}
+
+.image-compare-size {
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 44px;
+  padding: 0 4px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: #d1d5db;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+.image-compare-size.active {
+  background: #2267c7;
+  color: #fff;
+}

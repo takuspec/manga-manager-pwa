@@ -5,7 +5,8 @@ function DataActionMenu({
   onBackupData,
   onImportData,
   onWeeklySettings,
-  onAddMagazine
+  onAddMagazine,
+  onImageTest
 }) {
   const [isOpen, setIsOpen] =
     useState(false)
@@ -129,6 +130,18 @@ function DataActionMenu({
               }}
             >
               週刊誌情報
+            </button>
+          )}
+
+          {onImageTest && (
+            <button
+              type="button"
+              onClick={() => {
+                onImageTest()
+                setIsOpen(false)
+              }}
+            >
+              画質の見比べ
             </button>
           )}
 
