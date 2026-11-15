@@ -538,6 +538,9 @@ export function listCatalogSeriesEntries(
       spanCount: period?.spanCount || 0,
       startLabel: period?.startLabel || '',
       duration: period?.duration || '',
+      // 連載一覧と同じ作品画像
+      imageId: series.imageId || '',
+      image: series.image || '',
       period: describeSeriesPeriod(
         series,
         appMagazine,
@@ -575,6 +578,8 @@ export function mergeSeriesGroups(
       spanCount: current?.spanCount || 0,
       startLabel: current?.startLabel || '',
       duration: current?.duration || '',
+      imageId: current?.imageId || '',
+      image: current?.image || '',
       period: current?.period || '',
       count: group.count,
       cover: group.cover

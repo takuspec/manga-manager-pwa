@@ -8,6 +8,7 @@ import {
   useSearchParams
 } from 'react-router-dom'
 import CloudImage from '../components/CloudImage'
+import ImageView from '../components/ImageView'
 import CropSettings from '../components/CropSettings'
 import MagazineRename from '../components/MagazineRename'
 import {
@@ -18,7 +19,6 @@ import {
 import {
   SERIES_FILTERS,
   SERIES_SORTS,
-  SERIES_STATUS_LABELS,
   arrangeSeriesGroups,
   findAppMagazine,
   getCatalogRange,
@@ -718,21 +718,10 @@ function ColorMagazinePage({
                     }
                   >
                     <div className="cover">
-                      {group.cover ? (
-                        <CloudImage
-                          imageKey={thumbKey(
-                            slug,
-                            group.cover.year,
-                            group.cover.folder,
-                            group.cover.file
-                          )}
-                          alt=""
-                        />
-                      ) : (
-                        <div className="no-image">
-                          未登録
-                        </div>
-                      )}
+                      <ImageView
+                        imageId={group.imageId}
+                        fallbackImage={group.image}
+                      />
                     </div>
 
                     <div className="card-title">
@@ -751,20 +740,14 @@ function ColorMagazinePage({
                     )}
 
                     <div className="card-issue">
-                      {[
-                        SERIES_STATUS_LABELS[
-                          group.status
-                        ],
-                        group.duration
-                      ]
-                        .filter(Boolean)
-                        .join('・') || '期間未設定'}
-                    </div>
-
-                    <div className="card-unread">
                       {group.count > 0
                         ? `${group.count}枚`
                         : '画像なし'}
+                    </div>
+
+                    <div className="card-unread">
+                      {group.duration ||
+                        '期間未設定'}
                     </div>
                   </button>
                 ))}

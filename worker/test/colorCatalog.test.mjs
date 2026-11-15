@@ -71,7 +71,8 @@ const seriesList = [
   }),
   series('長期連載', {
     startIssueYear: 1997,
-    startIssue: 34
+    startIssue: 34,
+    imageId: 'image_long'
   }),
   series('合併号で開始', {
     startIssueYear: 2026,
@@ -379,6 +380,8 @@ test('作品ごとの表示: 連載データを使い、絞り込みと並べ替
 
   assert.equal(merged.count, 3)
   assert.equal(merged.status, 'ongoing')
+  // 作品画像は連載一覧と同じもの
+  assert.equal(merged.imageId, 'image_long')
   assert.match(merged.period, /〜連載中/)
 })
 
