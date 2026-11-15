@@ -7,8 +7,11 @@
 // クラウドには保存しない。アプリ側で作品を追加・修正すれば、そのまま反映される。
 
 import {
+  formatIssueLabel,
+  formatIssueSpanPeriod,
   getEstimatedLatestIssueInfo,
   getIssueSerial,
+  getIssueSpanCount,
   getWeeklyFinalIssue,
   getWeeklyMergedIssuePairs,
   isSeriesPublishedInIssue
@@ -331,4 +334,256 @@ export function listSeriesInIssue(
       }
     )
   ).sort((a, b) => a.localeCompare(b, 'ja'))
+}
+
+// ---- 作品ごとの表示（アプリの連載データをそのまま使う） ----
+
+export const SERIES_FILTERS = [
+  { id: 'all', label: 'すべて' },
+  { id: 'ongoing', label: '連載中' },
+  { id: 'completed', label: '完結' }
+]
+
+export const SERIES_SORTS = [
+  { id: 'new', label: '開始が新しい順' },
+  { id: 'old', label: '開始が古い順' },
+  { id: 'name', label: '名前順' },
+  { id: 'count', label: '画像の多い順' }
+]
+
+export const SERIES_STATUS_LABELS = {
+  ongoing: '連載中',
+  paused: '休載中',
+  completed: '完結'
+}
+
+function normalizeStatus(value) {
+  return value === 'completed' ||
+    value === 'paused'
+    ? value
+    : 'ongoing'
+}
+
+// 連載期間の文章。アプリの作品カードと同じ決まりで数える。
+// 例: 「2018年41号〜2020年24号（1年36週）」「2024年10号〜連載中（2年40週）」
+export function describeSeriesPeriod(
+  series,
+  appMagazine,
+  today = new Date()
+) {
+  const startYear =
+    Number(series.startIssueYear) || 0
+
+  const startIssue =
+    Number(series.startIssue) || 0
+
+  if (!appMagazine || !startYear || !startIssue) {
+    return '期間未設定'
+  }
+
+  const status = normalizeStatus(series.status)
+
+  const completed =
+    status === 'completed' &&
+    Number(series.completedIssueYear) &&
+    Number(series.completedIssue)
+
+  let end
+
+  if (completed) {
+    end = {
+      year: Number(series.completedIssueYear),
+      issue: Number(series.completedIssue)
+    }
+  } else if (
+    status !== 'ongoing' &&
+    Number(series.issueYear) &&
+    Number(series.issue)
+  ) {
+    end = {
+      year: Number(series.issueYear),
+      issue: Number(series.issue)
+    }
+  } else {
+    end =
+      getEstimatedLatestIssueInfo(
+        appMagazine,
+        today
+      )
+  }
+
+  const span =
+    getIssueSpanCount(
+      appMagazine,
+      startYear,
+      startIssue,
+      end?.year,
+      end?.issue
+    )
+
+  const duration =
+    span
+      ? formatIssueSpanPeriod(
+          appMagazine,
+          span,
+          startYear
+        )
+      : ''
+
+  const startLabel =
+    formatIssueLabel(
+      appMagazine,
+      startYear,
+      startIssue
+    )
+
+  const endLabel =
+    completed
+      ? formatIssueLabel(
+          appMagazine,
+          end.year,
+          end.issue
+        )
+      : SERIES_STATUS_LABELS[status]
+
+  return `${startLabel}〜${endLabel}${
+    duration ? `（${duration}）` : ''
+  }`
+}
+
+// 作品ごとの表示に使う作品。号の一覧がある雑誌は開始号以降に連載していたもの、
+// ない雑誌はその雑誌の作品すべて。
+export function listCatalogSeriesEntries(
+  seriesList,
+  appMagazine,
+  range,
+  today = new Date()
+) {
+  if (!appMagazine) {
+    return []
+  }
+
+  const from =
+    range
+      ? getIssueSerial(
+          range.start.year,
+          range.start.issue,
+          appMagazine
+        )
+      : -Infinity
+
+  const seen = new Set()
+  const entries = []
+
+  for (const series of seriesOf(
+    seriesList,
+    appMagazine
+  )) {
+    const title = String(series.title).trim()
+
+    if (seen.has(title)) {
+      continue
+    }
+
+    const span =
+      getSeriesSpan(series, appMagazine)
+
+    if (span.end < from) {
+      continue
+    }
+
+    seen.add(title)
+
+    entries.push({
+      title,
+      status: normalizeStatus(series.status),
+      start: span.start,
+      period: describeSeriesPeriod(
+        series,
+        appMagazine,
+        today
+      )
+    })
+  }
+
+  return entries
+}
+
+// アプリの作品と、作品タグの集計（collectSeries の結果）を合わせる。
+// アプリにない名前のタグも、状態不明として残す。
+export function mergeSeriesGroups(
+  entries,
+  tagged
+) {
+  const groups = new Map()
+
+  for (const entry of entries) {
+    groups.set(entry.title, {
+      ...entry,
+      count: 0,
+      cover: null
+    })
+  }
+
+  for (const group of tagged) {
+    const current = groups.get(group.title)
+
+    groups.set(group.title, {
+      title: group.title,
+      status: current?.status || 'unknown',
+      start: current?.start ?? -Infinity,
+      period: current?.period || '',
+      count: group.count,
+      cover: group.cover
+    })
+  }
+
+  return Array.from(groups.values())
+}
+
+export function arrangeSeriesGroups(
+  groups,
+  filter = 'all',
+  sort = 'new'
+) {
+  const byName = (a, b) =>
+    a.title.localeCompare(b.title, 'ja')
+
+  const known = (group) =>
+    Number.isFinite(group.start)
+
+  const filtered =
+    groups.filter((group) => {
+      if (filter === 'ongoing') {
+        return (
+          group.status === 'ongoing' ||
+          group.status === 'paused'
+        )
+      }
+
+      if (filter === 'completed') {
+        return group.status === 'completed'
+      }
+
+      return true
+    })
+
+  const compare = {
+    name: byName,
+    count: (a, b) =>
+      b.count - a.count || byName(a, b),
+    // 開始号が分からない作品は、どちらの並びでも最後
+    new: (a, b) =>
+      Number(known(b)) - Number(known(a)) ||
+      (known(a) ? b.start - a.start : 0) ||
+      byName(a, b),
+    old: (a, b) =>
+      Number(known(b)) - Number(known(a)) ||
+      (known(a) ? a.start - b.start : 0) ||
+      byName(a, b)
+  }
+
+  return [...filtered].sort(
+    compare[sort] || compare.new
+  )
 }

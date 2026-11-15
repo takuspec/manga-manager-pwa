@@ -234,9 +234,6 @@ function MagazineListPage({
         onWeeklySettings={() =>
           navigate('/weekly-settings')
         }
-        onImageTest={() =>
-          navigate('/image-test')
-        }
         onCloudSettings={() =>
           navigate('/cloud-settings')
         }

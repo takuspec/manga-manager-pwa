@@ -16,11 +16,16 @@ import {
   loadYearIndexes
 } from '../utils/colorStore'
 import {
+  SERIES_FILTERS,
+  SERIES_SORTS,
+  SERIES_STATUS_LABELS,
+  arrangeSeriesGroups,
   findAppMagazine,
   getCatalogRange,
   getCatalogYears,
   listCatalogIssues,
-  listCatalogSeries
+  listCatalogSeriesEntries,
+  mergeSeriesGroups
 } from '../utils/colorCatalog'
 import {
   collectSeries,
@@ -62,6 +67,23 @@ function ColorMagazinePage({
     searchParams.get('v') === 'series'
       ? 'series'
       : 'issues'
+
+  // 作品ごとの表示の絞り込みと並べ順
+  const filter =
+    SERIES_FILTERS.some(
+      (item) =>
+        item.id === searchParams.get('f')
+    )
+      ? searchParams.get('f')
+      : 'all'
+
+  const sort =
+    SERIES_SORTS.some(
+      (item) =>
+        item.id === searchParams.get('s')
+    )
+      ? searchParams.get('s')
+      : 'new'
 
   const [state, setState] =
     useState({
@@ -221,7 +243,7 @@ function ColorMagazinePage({
   const catalogSeries =
     useMemo(
       () =>
-        listCatalogSeries(
+        listCatalogSeriesEntries(
           seriesList,
           appMagazine,
           range
@@ -279,35 +301,16 @@ function ColorMagazinePage({
         })()
       : []
 
-  // タグの付いた作品と、一覧にある作品（まだ画像のないもの）を合わせる
+  // アプリの連載データの作品と、タグの付いた作品を合わせて、絞り込み・並べ替える
   const seriesGroups =
-    (() => {
-      const tagged =
-        new Map(
-          state.seriesGroups.map((group) => [
-            group.title,
-            group
-          ])
-        )
-
-      return Array.from(
-        new Set([
-          ...catalogSeries,
-          ...tagged.keys()
-        ])
-      )
-        .sort((a, b) =>
-          a.localeCompare(b, 'ja')
-        )
-        .map(
-          (title) =>
-            tagged.get(title) || {
-              title,
-              count: 0,
-              cover: null
-            }
-        )
-    })()
+    arrangeSeriesGroups(
+      mergeSeriesGroups(
+        catalogSeries,
+        state.seriesGroups
+      ),
+      filter,
+      sort
+    )
 
   const updateSearch = (changes) => {
     const next = {}
@@ -316,6 +319,8 @@ function ColorMagazinePage({
       changes.y ?? (state.year || '')
 
     const nextView = changes.v ?? view
+    const nextFilter = changes.f ?? filter
+    const nextSort = changes.s ?? sort
 
     if (year) {
       next.y = String(year)
@@ -323,6 +328,14 @@ function ColorMagazinePage({
 
     if (nextView === 'series') {
       next.v = 'series'
+
+      if (nextFilter !== 'all') {
+        next.f = nextFilter
+      }
+
+      if (nextSort !== 'new') {
+        next.s = nextSort
+      }
     }
 
     setSearchParams(next, {
@@ -650,63 +663,144 @@ function ColorMagazinePage({
               </div>
             )}
 
+          {view === 'series' && (
+            <div className="color-series-tools">
+              <div
+                className="color-chip-row"
+                role="group"
+                aria-label="絞り込み"
+              >
+                {SERIES_FILTERS.map((item) => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    className={
+                      filter === item.id
+                        ? 'color-chip selected'
+                        : 'color-chip'
+                    }
+                    aria-pressed={
+                      filter === item.id
+                    }
+                    onClick={() =>
+                      updateSearch({
+                        f: item.id
+                      })
+                    }
+                  >
+                    {item.label}
+                  </button>
+                ))}
+              </div>
+
+              <label className="color-toolbar-field">
+                <span>並べ順</span>
+                <select
+                  value={sort}
+                  onChange={(event) =>
+                    updateSearch({
+                      s: event.target.value
+                    })
+                  }
+                >
+                  {SERIES_SORTS.map((item) => (
+                    <option
+                      key={item.id}
+                      value={item.id}
+                    >
+                      {item.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+          )}
+
           {!isSwitching &&
             view === 'series' &&
             seriesGroups.length === 0 && (
               <div className="empty-message">
-                作品タグの付いた画像はまだありません。号の画面で「編集」から付けられます。
+                {filter === 'all'
+                  ? '作品がありません。連載の画面で作品を登録するか、号の画面で作品タグを付けると並びます。'
+                  : '該当する作品がありません。'}
               </div>
             )}
 
           {!isSwitching &&
-            view === 'series' && (
-              <div className="color-issue-grid">
-                {seriesGroups.map(
-                  (group) => (
-                    <button
-                      key={group.title}
-                      type="button"
-                      className={
-                        group.cover
-                          ? 'color-issue-card'
-                          : 'color-issue-card empty'
-                      }
-                      onClick={() =>
-                        navigate(
-                          `/color/${slug}/series/${encodeURIComponent(
-                            group.title
-                          )}`
-                        )
-                      }
-                    >
-                      <div className="color-thumb">
-                        {group.cover ? (
-                          <CloudImage
-                            imageKey={thumbKey(
-                              slug,
-                              group.cover.year,
-                              group.cover.folder,
-                              group.cover.file
-                            )}
-                            alt=""
-                          />
-                        ) : (
-                          <div className="cloud-image-placeholder">
-                            未登録
-                          </div>
-                        )}
-                      </div>
-                      <span className="color-issue-label">
+            view === 'series' &&
+            seriesGroups.length > 0 && (
+              <div className="color-series-list">
+                <p className="cloud-settings-note">
+                  {seriesGroups.length}作品
+                </p>
+
+                {seriesGroups.map((group) => (
+                  <button
+                    key={group.title}
+                    type="button"
+                    className={
+                      group.cover
+                        ? 'color-series-row'
+                        : 'color-series-row empty'
+                    }
+                    onClick={() =>
+                      navigate(
+                        `/color/${slug}/series/${encodeURIComponent(
+                          group.title
+                        )}`
+                      )
+                    }
+                  >
+                    <div className="color-thumb">
+                      {group.cover ? (
+                        <CloudImage
+                          imageKey={thumbKey(
+                            slug,
+                            group.cover.year,
+                            group.cover.folder,
+                            group.cover.file
+                          )}
+                          alt=""
+                        />
+                      ) : (
+                        <div className="cloud-image-placeholder">
+                          未登録
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="color-series-row-body">
+                      <span className="color-series-row-title">
                         {group.title}
                       </span>
-                      <small>
+
+                      <span className="color-series-row-meta">
+                        {SERIES_STATUS_LABELS[
+                          group.status
+                        ] && (
+                          <span
+                            className={`color-status-badge ${group.status}`}
+                          >
+                            {
+                              SERIES_STATUS_LABELS[
+                                group.status
+                              ]
+                            }
+                          </span>
+                        )}
                         {group.count > 0
                           ? `${group.count}枚`
-                          : '未登録'}
-                      </small>
-                    </button>
-                  )
-                )}
+                          : '画像なし'}
+                      </span>
+
+                      {group.period && (
+                        <span className="color-series-row-meta">
+                          {group.period}
+                        </span>
+                      )}
+                    </div>
+                  </button>
+                ))}
               </div>
             )}
         </div>

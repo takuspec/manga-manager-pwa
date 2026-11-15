@@ -1,9 +1,25 @@
+import { readFileSync } from 'node:fs'
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
 
+// 設定メニューに出すバージョン（package.json の version）と、作った日時
+const appVersion =
+  JSON.parse(
+    readFileSync(
+      new URL('./package.json', import.meta.url),
+      'utf8'
+    )
+  ).version
+
 export default defineConfig({
   base: '/manga-manager-pwa/',
+  define: {
+    'import.meta.env.VITE_APP_VERSION':
+      JSON.stringify(appVersion),
+    'import.meta.env.VITE_BUILD_TIME':
+      JSON.stringify(new Date().toISOString())
+  },
   plugins: [
     react(),
 

@@ -7,7 +7,7 @@ import { createPortal } from 'react-dom'
 import { getImageBlob } from '../utils/colorStore'
 import {
   formatIssueFolder,
-  getKindLabel,
+  getImageLabel,
   imageKey,
   thumbKey
 } from '../utils/colorLibrary'
@@ -595,7 +595,7 @@ function ColorViewer({
               imageFolder
             )}・`
           : ''}
-        {getKindLabel(image.kind)}・
+        {getImageLabel(image)}・
         {index + 1} / {images.length}
         {image.width
           ? `・${image.width} × ${image.height}px`

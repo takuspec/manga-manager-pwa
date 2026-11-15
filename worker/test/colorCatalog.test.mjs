@@ -1,6 +1,10 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import {
+  arrangeSeriesGroups,
+  describeSeriesPeriod,
+  listCatalogSeriesEntries,
+  mergeSeriesGroups,
   findAppMagazine,
   getCatalogRange,
   getCatalogStart,
@@ -257,4 +261,123 @@ test('その号に載っていた作品', () => {
     listSeriesInIssue(seriesList, null, 2026, '50'),
     []
   )
+})
+
+test('連載期間の表示', () => {
+  assert.equal(
+    describeSeriesPeriod(
+      seriesList[1],
+      jump,
+      TODAY
+    ).startsWith('2015年'),
+    true
+  )
+  assert.match(
+    describeSeriesPeriod(seriesList[1], jump, TODAY),
+    /〜2018年41号（3年\d+週）$/
+  )
+  assert.match(
+    describeSeriesPeriod(seriesList[3], jump, TODAY),
+    /^2026年42.*〜連載中（0年\d+週）$/
+  )
+  assert.match(
+    describeSeriesPeriod(seriesList[5], jump, TODAY),
+    /〜休載中/
+  )
+  assert.equal(
+    describeSeriesPeriod({ title: 'x' }, jump, TODAY),
+    '期間未設定'
+  )
+})
+
+test('作品ごとの表示: 連載データを使い、絞り込みと並べ替えができる', () => {
+  const range = {
+    start: { year: 2018, issue: 41 },
+    latest: { year: 2026, issue: 51 }
+  }
+
+  const entries =
+    listCatalogSeriesEntries(
+      seriesList,
+      jump,
+      range,
+      TODAY
+    )
+
+  assert.deepEqual(
+    entries.map((entry) => [entry.title, entry.status]),
+    [
+      ['2018年41号で終了', 'completed'],
+      ['長期連載', 'ongoing'],
+      ['合併号で開始', 'ongoing'],
+      ['隔週連載', 'ongoing'],
+      ['休載中', 'paused']
+    ]
+  )
+
+  // 号の一覧がない雑誌は、その雑誌の作品すべて
+  assert.equal(
+    listCatalogSeriesEntries(seriesList, jump, null, TODAY)
+      .length,
+    6
+  )
+
+  const groups =
+    mergeSeriesGroups(entries, [
+      {
+        title: '長期連載',
+        count: 3,
+        cover: { year: 2026, folder: '50', file: '01-cover.jpg' }
+      },
+      {
+        title: 'アプリにない作品',
+        count: 1,
+        cover: { year: 2026, folder: '50', file: '02-opening.jpg' }
+      }
+    ])
+
+  const titles = (list) => list.map((group) => group.title)
+
+  assert.deepEqual(
+    titles(arrangeSeriesGroups(groups, 'all', 'new')),
+    [
+      '隔週連載',
+      '合併号で開始',
+      '休載中',
+      '2018年41号で終了',
+      '長期連載',
+      'アプリにない作品'
+    ]
+  )
+  assert.deepEqual(
+    titles(arrangeSeriesGroups(groups, 'all', 'old')),
+    [
+      '長期連載',
+      '2018年41号で終了',
+      '休載中',
+      '合併号で開始',
+      '隔週連載',
+      'アプリにない作品'
+    ]
+  )
+  assert.deepEqual(
+    titles(arrangeSeriesGroups(groups, 'completed', 'new')),
+    ['2018年41号で終了']
+  )
+  // 連載中には休載中も含む
+  assert.deepEqual(
+    titles(arrangeSeriesGroups(groups, 'ongoing', 'name')).sort(),
+    ['休載中', '合併号で開始', '長期連載', '隔週連載'].sort()
+  )
+  assert.deepEqual(
+    titles(arrangeSeriesGroups(groups, 'all', 'count')).slice(0, 2),
+    ['長期連載', 'アプリにない作品']
+  )
+
+  const merged =
+    groups.find((group) => group.title === '長期連載')
+
+  assert.equal(merged.count, 3)
+  assert.equal(merged.status, 'ongoing')
+  assert.match(merged.period, /〜連載中/)
 })

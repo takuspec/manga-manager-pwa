@@ -1,5 +1,8 @@
 import { useEffect, useState } from 'react'
-import { useParams } from 'react-router-dom'
+import {
+  useLocation,
+  useParams
+} from 'react-router-dom'
 import CloudImage from '../components/CloudImage'
 import ColorViewer from '../components/ColorViewer'
 import {
@@ -7,16 +10,26 @@ import {
   loadYearIndexes
 } from '../utils/colorStore'
 import {
+  SERIES_STATUS_LABELS,
+  describeSeriesPeriod,
+  findAppMagazine
+} from '../utils/colorCatalog'
+import {
   formatIssueFolder,
-  getKindLabel,
+  getImageLabel,
   listSeriesImages,
   normalizeSlug,
   thumbKey
 } from '../utils/colorLibrary'
 
 // 1つの作品のタグが付いたカラーページを、新しい号から順に並べる
-function ColorSeriesPage({ navigate }) {
+function ColorSeriesPage({
+  magazineList,
+  seriesList,
+  navigate
+}) {
   const params = useParams()
+  const location = useLocation()
 
   const slug = normalizeSlug(params.slug)
   const title =
@@ -63,6 +76,7 @@ function ColorSeriesPage({ navigate }) {
 
       return {
         status: 'ready',
+        magazine,
         images: listSeriesImages(
           result.indexes,
           title
@@ -98,18 +112,42 @@ function ColorSeriesPage({ navigate }) {
     }
   }, [slug, title])
 
+  // アプリに登録されている同じ名前の作品（連載期間の表示用）
+  const appMagazine =
+    findAppMagazine(
+      state.magazine,
+      magazineList
+    )
+
+  const series =
+    appMagazine
+      ? seriesList.find(
+          (item) =>
+            item.magazineId ===
+              appMagazine.id &&
+            String(item.title || '').trim() ===
+              title
+        )
+      : null
+
   return (
     <div className="app">
       <div className="series-page-header">
         <button
           className="back-button"
-          onClick={() =>
+          onClick={() => {
+            // 一覧から来たときは、絞り込みや並べ順を保ったまま戻る
+            if (location.key !== 'default') {
+              navigate(-1)
+              return
+            }
+
             navigate(
               slug
                 ? `/color/${slug}?v=series`
                 : '/color'
             )
-          }
+          }}
         >
           ← 戻る
         </button>
@@ -151,6 +189,22 @@ function ColorSeriesPage({ navigate }) {
             </div>
           )}
 
+          {series && (
+            <p className="color-series-row-meta">
+              <span
+                className={`color-status-badge ${series.status || 'ongoing'}`}
+              >
+                {SERIES_STATUS_LABELS[
+                  series.status
+                ] || '連載中'}
+              </span>
+              {describeSeriesPeriod(
+                series,
+                appMagazine
+              )}
+            </p>
+          )}
+
           {state.images.length === 0 && (
             <div className="empty-message">
               この作品のタグが付いた画像はありません。
@@ -186,7 +240,7 @@ function ColorSeriesPage({ navigate }) {
                   </button>
 
                   <span className="color-kind-badge">
-                    {getKindLabel(image.kind)}
+                    {getImageLabel(image)}
                   </span>
 
                   <span className="color-series-line">

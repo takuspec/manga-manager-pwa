@@ -13,15 +13,22 @@ export const THUMB_PREFIX = '_thumbs/'
 export const MIN_YEAR = 1950
 export const MAX_YEAR = 2100
 
+// 画像の種類は掲載位置で分ける。見開きか縦かは、画像の縦横から自動で決まる。
 export const IMAGE_KINDS = [
   { id: 'cover', label: '表紙' },
-  { id: 'spread', label: '見開き' },
+  { id: 'opening', label: '巻頭カラー' },
   { id: 'center', label: 'センターカラー' },
   { id: 'other', label: 'その他' }
 ]
 
 const KIND_IDS =
   new Set(IMAGE_KINDS.map((kind) => kind.id))
+
+// 以前の種類名。「見開き」で登録したものは巻頭カラーとして扱う
+// （ファイル名はそのまま）。
+const LEGACY_KINDS = {
+  spread: 'opening'
+}
 
 // 保存先の最上位で、雑誌フォルダ以外に使っている名前
 const RESERVED_SLUGS = new Set(['index'])
@@ -39,9 +46,34 @@ export function getKindLabel(kindId) {
 }
 
 export function normalizeKind(kindId) {
-  return KIND_IDS.has(kindId)
-    ? kindId
+  const kind =
+    LEGACY_KINDS[kindId] || kindId
+
+  return KIND_IDS.has(kind)
+    ? kind
     : 'other'
+}
+
+export function isSpreadSize(size) {
+  return (
+    Number(size?.width) >
+    Number(size?.height) * 1.1
+  )
+}
+
+// 一覧などに出す名前。例: 「巻頭カラー・見開き」「センターカラー・縦」
+export function getImageLabel(image) {
+  const kind = getKindLabel(
+    normalizeKind(image?.kind)
+  )
+
+  if (!image?.width || !image?.height) {
+    return kind
+  }
+
+  return `${kind}・${
+    isSpreadSize(image) ? '見開き' : '縦'
+  }`
 }
 
 // 雑誌のフォルダ名。半角の英小文字・数字・ハイフンだけ。
@@ -786,23 +818,45 @@ export function setImageSeriesInIssue(
   )
 }
 
-// まとめて取り込むときの種類の初期値。
-// 横長は見開き。縦長は、その号にまだ表紙がなければ最初の1枚を表紙、
-// 残りをセンターカラーにする。登録前に画面で直せる。
+// まとめて取り込むときの種類の初期値。撮った順に、
+// 1. 最初の縦長を表紙（その号にまだ表紙がなければ）
+// 2. 最初の見開きと、そのあとの縦長2枚（見開きの各ページ）を巻頭カラー
+//    （その号にまだ巻頭カラーがなければ）
+// 3. それ以外をセンターカラー
+// とする。登録前に画面で直せる。
+const OPENING_PAGES = 2
+
 export function suggestKinds(
   sizes,
-  hasCover = false
+  {
+    hasCover = false,
+    hasOpening = false
+  } = {}
 ) {
   let coverAssigned = hasCover
+  let openingAssigned = hasOpening
+  let openingPagesLeft = 0
 
   return sizes.map((size) => {
-    if (size.width > size.height * 1.1) {
-      return 'spread'
+    if (isSpreadSize(size)) {
+      if (!openingAssigned) {
+        openingAssigned = true
+        openingPagesLeft = OPENING_PAGES
+        return 'opening'
+      }
+
+      openingPagesLeft = 0
+      return 'center'
     }
 
     if (!coverAssigned) {
       coverAssigned = true
       return 'cover'
+    }
+
+    if (openingPagesLeft > 0) {
+      openingPagesLeft -= 1
+      return 'opening'
     }
 
     return 'center'

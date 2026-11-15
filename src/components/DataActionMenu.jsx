@@ -1,12 +1,31 @@
 import AppIcon from './AppIcon'
 import { useRef, useState } from 'react'
 
+// アップデートが届いたか確かめられるよう、バージョンと作った日時を出す
+const BUILD_TIME =
+  import.meta.env.VITE_BUILD_TIME
+    ? new Date(import.meta.env.VITE_BUILD_TIME)
+    : null
+
+const APP_VERSION_TEXT =
+  `ver ${import.meta.env.VITE_APP_VERSION || '-'}` +
+  (BUILD_TIME &&
+  !Number.isNaN(BUILD_TIME.getTime())
+    ? `（${BUILD_TIME.toLocaleString('ja-JP', {
+        timeZone: 'Asia/Tokyo',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit'
+      })}）`
+    : '')
+
 function DataActionMenu({
   onBackupData,
   onImportData,
   onWeeklySettings,
   onAddMagazine,
-  onImageTest,
   onCloudSettings
 }) {
   const [isOpen, setIsOpen] =
@@ -31,28 +50,6 @@ function DataActionMenu({
     } catch {
       window.alert(
         'バックアップに失敗しました。'
-      )
-    }
-  }
-
-  const handleSplitBackup = async () => {
-    const ok =
-      window.confirm(
-        '分割バックアップを作成しますか？画像が多い場合はこちらを使ってください。'
-      )
-
-    if (!ok) {
-      return
-    }
-
-    try {
-      await onBackupData({
-        split: true
-      })
-      setIsOpen(false)
-    } catch {
-      window.alert(
-        '分割バックアップに失敗しました。'
       )
     }
   }
@@ -146,18 +143,6 @@ function DataActionMenu({
             </button>
           )}
 
-          {onImageTest && (
-            <button
-              type="button"
-              onClick={() => {
-                onImageTest()
-                setIsOpen(false)
-              }}
-            >
-              画質の見比べ
-            </button>
-          )}
-
           <button
             type="button"
             onClick={handleImportButtonClick}
@@ -172,12 +157,9 @@ function DataActionMenu({
             バックアップ
           </button>
 
-          <button
-            type="button"
-            onClick={handleSplitBackup}
-          >
-            分割バックアップ
-          </button>
+          <div className="data-action-version">
+            {APP_VERSION_TEXT}
+          </div>
         </div>
       )}
 

@@ -284,13 +284,13 @@ test('並べ替えと削除がクラウドに反映される', async () => {
     slug: 'jump',
     year: 2026,
     folder: '50',
-    kind: 'spread',
+    kind: 'opening',
     prepared: prepared(1)
   })
 
   assert.ok(
     bucket.objects.has(
-      'jump/2026/50/05-spread.jpg'
+      'jump/2026/50/05-opening.jpg'
     )
   )
 })
@@ -409,7 +409,7 @@ test('まとめて登録: 1枚ごとの種類と作品タグが記録される',
   const items = prepared(3)
 
   items[0].kind = 'cover'
-  items[1].kind = 'spread'
+  items[1].kind = 'opening'
   items[1].series = ['あかね噺']
   items[2].kind = 'center'
   items[2].series = ['あかね噺', 'ONE PIECE']
@@ -430,13 +430,13 @@ test('まとめて登録: 1枚ごとの種類と作品タグが記録される',
     ),
     [
       ['01-cover.jpg', []],
-      ['02-spread.jpg', ['あかね噺']],
+      ['02-opening.jpg', ['あかね噺']],
       ['03-center.jpg', ['あかね噺', 'ONE PIECE']]
     ]
   )
   assert.ok(
     bucket.objects.has(
-      'jump/2026/48/02-spread.jpg'
+      'jump/2026/48/02-opening.jpg'
     )
   )
 })
@@ -455,7 +455,7 @@ test('作品ごとの表示: 複数の年をまとめて読み、短時間は読
         image.file
       ]),
     [
-      [2026, '48', '02-spread.jpg'],
+      [2026, '48', '02-opening.jpg'],
       [2026, '48', '03-center.jpg']
     ]
   )

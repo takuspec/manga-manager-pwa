@@ -23,7 +23,6 @@ import WeeklyIssueRulesPage from './pages/WeeklyIssueRulesPage'
 import WeeklyMergedIssuesPage from './pages/WeeklyMergedIssuesPage'
 import TimelineIndexPage from './pages/TimelineIndexPage'
 import TimelinePage from './pages/TimelinePage'
-import ImageSizeTestPage from './pages/ImageSizeTestPage'
 import CloudSettingsPage from './pages/CloudSettingsPage'
 import ColorIndexPage from './pages/ColorIndexPage'
 import ColorMagazinePage from './pages/ColorMagazinePage'
@@ -674,6 +673,8 @@ function App() {
         path="/color/:slug/series/:title"
         element={
           <ColorSeriesPage
+            magazineList={magazineList}
+            seriesList={seriesList}
             navigate={navigate}
           />
         }
@@ -694,15 +695,6 @@ function App() {
         path="/cloud-settings"
         element={
           <CloudSettingsPage
-            navigate={navigate}
-          />
-        }
-      />
-
-      <Route
-        path="/image-test"
-        element={
-          <ImageSizeTestPage
             navigate={navigate}
           />
         }

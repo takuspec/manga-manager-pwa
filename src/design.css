@@ -1131,3 +1131,92 @@ button svg { flex-shrink: 0; vertical-align: middle; }
   font-size: 12px;
   font-weight: 650;
 }
+
+/* カラーページ: 作品ごとの一覧（連載データから作る） */
+.color-series-tools {
+  display: grid;
+  gap: 10px;
+}
+
+.color-series-list {
+  display: grid;
+  gap: 8px;
+}
+
+.color-series-list > .cloud-settings-note {
+  margin: 0;
+}
+
+.color-series-row {
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr);
+  gap: 12px;
+  align-items: center;
+  min-height: 0;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--text);
+  font-weight: 400;
+  text-align: left;
+}
+
+.color-series-row .color-thumb {
+  width: 64px;
+}
+
+.color-series-row.empty .color-thumb {
+  border: 1px dashed #33445e;
+  background: transparent;
+}
+
+.color-series-row-body {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.color-series-row-title {
+  font-size: 14px;
+  font-weight: 650;
+  overflow-wrap: anywhere;
+}
+
+.color-series-row-meta {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+.color-status-badge {
+  display: inline-block;
+  margin-right: 6px;
+  padding: 0 7px;
+  border: 1px solid #3b82f6;
+  border-radius: 999px;
+  color: #bfdbfe;
+  font-size: 11px;
+  line-height: 18px;
+}
+
+.color-status-badge.paused {
+  border-color: #f59e0b;
+  color: #fde68a;
+}
+
+.color-status-badge.completed {
+  border-color: #64748b;
+  color: #cbd5e1;
+}
+
+/* 設定メニューのバージョン表示 */
+.data-action-version {
+  padding: 10px 12px 4px;
+  color: var(--muted);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}

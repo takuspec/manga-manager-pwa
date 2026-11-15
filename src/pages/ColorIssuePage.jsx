@@ -23,7 +23,9 @@ import {
 import {
   IMAGE_KINDS,
   formatIssueFolder,
+  getImageLabel,
   getKindLabel,
+  isSpreadSize,
   moveImageInIssue,
   normalizeSlug,
   normalizeYear,
@@ -255,13 +257,16 @@ function ColorIssuePage({
       }
 
       const kinds =
-        suggestKinds(
-          prepared,
-          images.some(
+        suggestKinds(prepared, {
+          hasCover: images.some(
             (image) =>
               image.kind === 'cover'
+          ),
+          hasOpening: images.some(
+            (image) =>
+              image.kind === 'opening'
           )
-        )
+        })
 
       releasePreviews()
 
@@ -713,7 +718,10 @@ function ColorIssuePage({
                       </button>
 
                       <small>
-                        {item.prepared.width} ×{' '}
+                        {isSpreadSize(item.prepared)
+                          ? '見開き'
+                          : '縦'}
+                        ・{item.prepared.width} ×{' '}
                         {item.prepared.height}px
                         {item.prepared.trimmed
                           ? item.prepared
@@ -800,8 +808,8 @@ function ColorIssuePage({
                 <button
                   type="button"
                   className="color-thumb"
-                  aria-label={`${getKindLabel(
-                    image.kind
+                  aria-label={`${getImageLabel(
+                    image
                   )}を全画面で表示`}
                   onClick={() =>
                     setViewerIndex(position)
@@ -819,7 +827,7 @@ function ColorIssuePage({
                 </button>
 
                 <span className="color-kind-badge">
-                  {getKindLabel(image.kind)}
+                  {getImageLabel(image)}
                 </span>
 
                 {!isEditing &&

@@ -26,6 +26,8 @@ import {
   setImageKindInIssue,
   setImageSeriesInIssue,
   suggestKinds,
+  getImageLabel,
+  normalizeKind,
   thumbKey,
   upsertMagazine,
   yearIndexKey
@@ -34,8 +36,9 @@ import { parseKey } from '../src/index.js'
 
 const NOW = '2026-11-16T00:00:00.000Z'
 
+// ファイル名は種類名そのまま（以前の「spread」も含めて）で作る
 const image = (seq, kind = 'other') => ({
-  file: buildFileName(seq, kind),
+  file: `${String(seq).padStart(2, '0')}-${kind}.jpg`,
   seq,
   kind,
   width: 2048,
@@ -306,39 +309,117 @@ test('号は番号順に並ぶ。壊れた索引は安全に読み飛ばす', ()
   )
 })
 
-test('種類の初期値: 横長は見開き、縦長は表紙→センターカラー', () => {
+test('種類の初期値: 表紙→巻頭カラー（見開き＋縦2枚）→センターカラー', () => {
   const portrait = { width: 1872, height: 2732 }
   const landscape = { width: 2732, height: 1994 }
 
+  // ジャンプのいつもの7枚: 表紙、巻頭の見開きと各ページ、センターカラー3枚
   assert.deepEqual(
     suggestKinds([
       portrait,
       landscape,
-      landscape,
+      portrait,
+      portrait,
       portrait,
       portrait,
       portrait
     ]),
     [
       'cover',
-      'spread',
-      'spread',
+      'opening',
+      'opening',
+      'opening',
       'center',
       'center',
       'center'
     ]
   )
 
-  // すでに表紙がある号では、縦長はすべてセンターカラー
+  // センターカラーが見開きのときも、見開きと各ページはセンターカラー
   assert.deepEqual(
-    suggestKinds([portrait, landscape], true),
-    ['center', 'spread']
+    suggestKinds([
+      portrait,
+      landscape,
+      portrait,
+      portrait,
+      landscape,
+      portrait,
+      portrait
+    ]),
+    [
+      'cover',
+      'opening',
+      'opening',
+      'opening',
+      'center',
+      'center',
+      'center'
+    ]
   )
 
-  // 見開きから選び始めても、最初の縦長が表紙になる
+  // 表紙と巻頭カラーがすでにある号に足すときは、すべてセンターカラー
   assert.deepEqual(
-    suggestKinds([landscape, portrait]),
-    ['spread', 'cover']
+    suggestKinds([portrait, landscape], {
+      hasCover: true,
+      hasOpening: true
+    }),
+    ['center', 'center']
+  )
+
+  // 表紙だけある号では、最初の見開きから巻頭カラー
+  assert.deepEqual(
+    suggestKinds([landscape, portrait, portrait, portrait], {
+      hasCover: true
+    }),
+    ['opening', 'opening', 'opening', 'center']
+  )
+})
+
+test('種類の名前と、以前の「見開き」の扱い', () => {
+  assert.equal(normalizeKind('spread'), 'opening')
+  assert.equal(normalizeKind('opening'), 'opening')
+  assert.equal(normalizeKind('xxx'), 'other')
+
+  assert.equal(
+    getImageLabel({
+      kind: 'opening',
+      width: 2732,
+      height: 1994
+    }),
+    '巻頭カラー・見開き'
+  )
+  assert.equal(
+    getImageLabel({
+      kind: 'center',
+      width: 1872,
+      height: 2732
+    }),
+    'センターカラー・縦'
+  )
+  assert.equal(
+    getImageLabel({ kind: 'spread' }),
+    '巻頭カラー'
+  )
+
+  // 以前「見開き」で登録した画像は、ファイル名を変えずに巻頭カラーになる
+  const index =
+    normalizeYearIndex(
+      {
+        issues: {
+          '50': { images: [image(2, 'spread')] }
+        }
+      },
+      'jump',
+      2026
+    )
+
+  assert.equal(
+    index.issues['50'].images[0].file,
+    '02-spread.jpg'
+  )
+  assert.equal(
+    index.issues['50'].images[0].kind,
+    'opening'
   )
 })
 
