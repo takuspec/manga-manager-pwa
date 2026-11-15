@@ -237,6 +237,9 @@ function MagazineListPage({
         onImageTest={() =>
           navigate('/image-test')
         }
+        onCloudSettings={() =>
+          navigate('/cloud-settings')
+        }
       />
       </div>
 

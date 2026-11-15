@@ -371,3 +371,159 @@ button svg { flex-shrink: 0; vertical-align: middle; }
   background: #2267c7;
   color: #fff;
 }
+
+/* クラウド設定（接続先、使用状況、通信の安全装置） */
+.cloud-settings {
+  display: grid;
+  gap: 16px;
+  padding: 4px 0 28px;
+}
+
+.cloud-settings-section {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface);
+}
+
+.cloud-settings-section h2 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.cloud-settings-field {
+  display: grid;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.cloud-settings-field input {
+  width: 100%;
+  min-height: 44px;
+  padding: 0 12px;
+  color: var(--text);
+  font-size: 16px;
+}
+
+.cloud-settings-note {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.7;
+}
+
+.cloud-settings-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.cloud-settings-actions button {
+  flex: 1 1 120px;
+}
+
+.cloud-settings-secondary {
+  background: transparent;
+  border-color: #42516a;
+  color: var(--text);
+}
+
+.cloud-settings-message {
+  display: grid;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #12301f;
+  color: #bbf7d0;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.cloud-settings-message.error {
+  background: #3b1519;
+  color: #fecaca;
+}
+
+.cloud-settings-list {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 13px;
+  line-height: 1.8;
+}
+
+.cloud-settings-link {
+  color: var(--accent);
+  font-size: 13px;
+}
+
+.cloud-usage {
+  display: grid;
+  gap: 14px;
+}
+
+.cloud-usage-cost {
+  display: grid;
+  gap: 2px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: #0c1728;
+}
+
+.cloud-usage-cost span,
+.cloud-usage-cost small {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.cloud-usage-cost strong {
+  font-size: 28px;
+  font-variant-numeric: tabular-nums;
+}
+
+.cloud-usage-meter {
+  display: grid;
+  gap: 6px;
+}
+
+.cloud-usage-meter-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 13px;
+}
+
+.cloud-usage-meter-head strong {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.cloud-usage-bar {
+  height: 8px;
+  border-radius: 999px;
+  background: #0c1728;
+  overflow: hidden;
+}
+
+.cloud-usage-bar-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: #3b82f6;
+}
+
+.cloud-usage-bar-fill.near {
+  background: #f59e0b;
+}
+
+.cloud-usage-bar-fill.over {
+  background: #ef4444;
+}
+
+.cloud-usage-meter-foot {
+  color: var(--muted);
+  font-size: 12px;
+}

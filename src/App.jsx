@@ -24,6 +24,7 @@ import WeeklyMergedIssuesPage from './pages/WeeklyMergedIssuesPage'
 import TimelineIndexPage from './pages/TimelineIndexPage'
 import TimelinePage from './pages/TimelinePage'
 import ImageSizeTestPage from './pages/ImageSizeTestPage'
+import CloudSettingsPage from './pages/CloudSettingsPage'
 
 import {
   getEstimatedLatestIssue,
@@ -640,6 +641,15 @@ function App() {
             seriesList={seriesList}
             navigate={navigate}
             useParams={useParams}
+          />
+        }
+      />
+
+      <Route
+        path="/cloud-settings"
+        element={
+          <CloudSettingsPage
+            navigate={navigate}
           />
         }
       />
