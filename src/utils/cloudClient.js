@@ -241,6 +241,15 @@ export function createCloudClient({
       )
     }
 
+    // 全角文字や空白が混ざった合言葉は、ブラウザが送信そのものを拒否する。
+    // 「通信できませんでした」と区別できるよう、先に検査して理由を伝える。
+    if (!/^[\x21-\x7e]+$/.test(config.token)) {
+      throw new CloudError(
+        'invalid_token',
+        '合言葉に使えない文字（全角の文字や空白）が入っています。半角で入力し直してください。'
+      )
+    }
+
     let lastError = null
 
     for (
@@ -332,7 +341,15 @@ export function createCloudClient({
       }
     }
 
-    recordFailure()
+    // 「まだ何も登録されていない」（404）は正常な応答なので、
+    // 失敗の回数には数えない。数えると、空の年や号を続けて開いただけで
+    // 通信が一時停止してしまう。
+    if (lastError?.status === 404) {
+      state.consecutiveFailures = 0
+    } else {
+      recordFailure()
+    }
+
     throw lastError
   }
 

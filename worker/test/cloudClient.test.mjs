@@ -302,3 +302,44 @@ test('ファイル名は区切りを保ったまま送る', async () => {
     'image/jpeg'
   )
 })
+
+test('まだ登録のない場所を続けて開いても、一時停止しない', async () => {
+  const { client, calls } =
+    setup(() => status(404))
+
+  for (
+    let i = 0;
+    i < SAFETY.breakerFailures * 3;
+    i += 1
+  ) {
+    await assert.rejects(
+      client.getFile('jump/2019/index.json'),
+      (error) => error.status === 404
+    )
+  }
+
+  assert.equal(client.getStatus().paused, false)
+  assert.equal(client.getStatus().failures, 0)
+  assert.equal(
+    calls.length,
+    SAFETY.breakerFailures * 3
+  )
+})
+
+test('全角文字や空白の入った合言葉は、送る前に知らせる', async () => {
+  for (const token of ['ａｂｃ１２３', 'abc 123', 'abc\u200b123']) {
+    const { client, calls } = setup([ok()])
+
+    client.saveConfig({
+      endpoint: 'https://w.example.workers.dev',
+      token
+    })
+
+    await assert.rejects(
+      client.testConnection(),
+      (error) => error.code === 'invalid_token'
+    )
+    assert.equal(calls.length, 0)
+    assert.equal(client.getStatus().failures, 0)
+  }
+})

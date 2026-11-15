@@ -11,7 +11,9 @@ import findContentBox from './trimBox.js'
 import { pickCropBox } from './colorLibrary.js'
 
 const FULL_JPEG_QUALITY = 0.9
-const THUMB_LONG_EDGE = 480
+// 一覧の1枠は最大で幅190×高さ253（CSS px）。iPhone は1px を3倍の細かさで
+// 表示するので、570×760 あれば引き伸ばさずに済む。
+const THUMB_LONG_EDGE = 800
 const THUMB_JPEG_QUALITY = 0.8
 
 // iOS の canvas が扱える面積の上限（約1,670万画素）より少し内側
