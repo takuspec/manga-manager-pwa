@@ -21,8 +21,10 @@ import {
   imageKey,
   nextSequence,
   normalizeRootIndex,
+  normalizeSlug,
   normalizeYearIndex,
   thumbKey,
+  upsertMagazine,
   yearIndexKey
 } from './colorLibrary.js'
 
@@ -436,4 +438,263 @@ export async function deleteImageFiles(
 
   cacheDelete(fullKey)
   cacheDelete(smallKey)
+}
+
+// ---- 雑誌の名前とフォルダ名の変更 ----
+
+// 通信回数の上限（1分あたり）に達したら、少し待ってから続ける。
+// 大量の画像を移すときに、途中で止まらないようにするため。
+const PACING_WAIT_MS = 15 * 1000
+
+async function paced(action) {
+  for (;;) {
+    try {
+      return await action()
+    } catch (error) {
+      if (
+        error instanceof CloudError &&
+        error.code === 'too_many_requests'
+      ) {
+        await new Promise((resolve) => {
+          setTimeout(resolve, PACING_WAIT_MS)
+        })
+        continue
+      }
+
+      throw error
+    }
+  }
+}
+
+function offlineError() {
+  return new CloudError(
+    'network',
+    '通信できないため変更できませんでした。'
+  )
+}
+
+// フォルダ名を変えるときは、登録済みの画像をすべて新しい場所へ写してから
+// 一覧を切り替え、最後に古いファイルを消す。
+// 途中で失敗しても、切り替え前なら元の状態のまま使える。
+export async function renameMagazine({
+  from,
+  to,
+  name,
+  onProgress
+}) {
+  const target = normalizeSlug(to)
+
+  if (!target) {
+    throw new CloudError(
+      'invalid_slug',
+      'フォルダ名は半角の英小文字・数字・ハイフンで入力してください（例: jump）。'
+    )
+  }
+
+  const latest = await readJson(ROOT_INDEX_KEY)
+
+  if (latest.fromCache) {
+    throw offlineError()
+  }
+
+  const root = normalizeRootIndex(latest.data)
+
+  const magazine =
+    root.magazines.find(
+      (item) => item.slug === from
+    )
+
+  if (!magazine) {
+    throw new CloudError(
+      'not_found',
+      'この雑誌は登録されていません。'
+    )
+  }
+
+  const cleanName =
+    String(name ?? '').trim() || magazine.name
+
+  // 名前だけの変更は、一覧を書き換えるだけ
+  if (target === from) {
+    const next =
+      await updateRootIndex((current) =>
+        upsertMagazine(current, {
+          slug: from,
+          name: cleanName
+        })
+      )
+
+    return {
+      magazine: next.magazines.find(
+        (item) => item.slug === from
+      ),
+      leftover: 0
+    }
+  }
+
+  if (
+    root.magazines.some(
+      (item) => item.slug === target
+    )
+  ) {
+    throw new CloudError(
+      'slug_taken',
+      'そのフォルダ名はすでに使われています。'
+    )
+  }
+
+  // 1. 年ごとの索引を読み、移すファイルを洗い出す
+  const years = []
+
+  for (const year of magazine.years) {
+    const result =
+      await paced(() =>
+        readJson(yearIndexKey(from, year))
+      )
+
+    if (result.fromCache) {
+      throw offlineError()
+    }
+
+    years.push({
+      year,
+      index: normalizeYearIndex(
+        result.data,
+        from,
+        year
+      )
+    })
+  }
+
+  const moves = []
+
+  for (const { year, index } of years) {
+    for (const [folder, issue] of Object.entries(
+      index.issues
+    )) {
+      for (const image of issue.images) {
+        moves.push(
+          [
+            imageKey(from, year, folder, image.file),
+            imageKey(target, year, folder, image.file)
+          ],
+          [
+            thumbKey(from, year, folder, image.file),
+            thumbKey(target, year, folder, image.file)
+          ]
+        )
+      }
+    }
+  }
+
+  // 2. 新しい場所へ写す（元のファイルはまだ消さない）
+  let done = 0
+
+  for (const [oldKey, newKey] of moves) {
+    let blob = null
+
+    try {
+      blob =
+        await paced(() =>
+          cloudClient.getFile(oldKey)
+        )
+    } catch (error) {
+      // 元から無いファイル（縮小版の作り損ねなど）は飛ばす
+      if (!isNotFound(error)) {
+        throw error
+      }
+    }
+
+    if (blob) {
+      await paced(() =>
+        cloudClient.putFile(
+          newKey,
+          blob,
+          'image/jpeg'
+        )
+      )
+    }
+
+    done += 1
+    onProgress?.({
+      phase: 'copy',
+      done,
+      total: moves.length
+    })
+  }
+
+  // 3. 新しい場所の索引を書き、雑誌の一覧を切り替える
+  for (const { year, index } of years) {
+    await paced(() =>
+      writeJson(
+        yearIndexKey(target, year),
+        normalizeYearIndex(
+          index,
+          target,
+          year
+        )
+      )
+    )
+  }
+
+  const next =
+    await paced(() =>
+      updateRootIndex((current) => {
+        const changed =
+          normalizeRootIndex(current)
+
+        const item =
+          changed.magazines.find(
+            (entry) => entry.slug === from
+          )
+
+        if (!item) {
+          throw new CloudError(
+            'not_found',
+            'この雑誌は登録されていません。'
+          )
+        }
+
+        item.slug = target
+        item.name = cleanName
+        return changed
+      })
+    )
+
+  // 4. 古いファイルを消す。失敗しても、表示には影響しない
+  const oldKeys = [
+    ...moves.map(([oldKey]) => oldKey),
+    ...years.map(({ year }) =>
+      yearIndexKey(from, year)
+    )
+  ]
+
+  let leftover = 0
+  let cleaned = 0
+
+  for (const key of oldKeys) {
+    try {
+      await paced(() =>
+        cloudClient.deleteFile(key)
+      )
+      cacheDelete(key)
+    } catch (error) {
+      console.error(error)
+      leftover += 1
+    }
+
+    cleaned += 1
+    onProgress?.({
+      phase: 'cleanup',
+      done: cleaned,
+      total: oldKeys.length
+    })
+  }
+
+  return {
+    magazine: next.magazines.find(
+      (item) => item.slug === target
+    ),
+    leftover
+  }
 }

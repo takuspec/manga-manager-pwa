@@ -490,3 +490,127 @@ test('作品ごとの表示: 複数の年をまとめて読み、短時間は読
     3
   )
 })
+
+test('名前だけを変える', async () => {
+  const result =
+    await store.renameMagazine({
+      from: 'jump',
+      to: 'jump',
+      name: 'ジャンプ'
+    })
+
+  assert.equal(result.magazine.slug, 'jump')
+  assert.equal(result.magazine.name, 'ジャンプ')
+})
+
+test('フォルダ名を変えると、画像と索引がすべて移る', async () => {
+  const before =
+    Array.from(bucket.objects.keys()).filter(
+      (key) =>
+        key.startsWith('jump/') ||
+        key.startsWith('_thumbs/jump/')
+    )
+
+  // 縮小版が1枚欠けていても止まらない
+  bucket.objects.delete(
+    '_thumbs/jump/2026/50/03-center.jpg'
+  )
+
+  const progress = []
+
+  const result =
+    await store.renameMagazine({
+      from: 'jump',
+      to: 'shonen-jump',
+      name: '週刊少年ジャンプ',
+      onProgress: (step) => progress.push(step.phase)
+    })
+
+  assert.equal(result.magazine.slug, 'shonen-jump')
+  assert.equal(result.magazine.name, '週刊少年ジャンプ')
+  assert.deepEqual(result.magazine.years, [2026, 2019])
+  assert.equal(result.leftover, 0)
+  assert.ok(progress.includes('copy'))
+  assert.ok(progress.includes('cleanup'))
+
+  const keys = Array.from(bucket.objects.keys())
+
+  // 古い場所には何も残らない
+  assert.equal(
+    keys.filter(
+      (key) =>
+        key.startsWith('jump/') ||
+        key.startsWith('_thumbs/jump/')
+    ).length,
+    0
+  )
+
+  // 欠けていた1枚以外は、同じ名前のまま新しい場所にある
+  assert.equal(
+    keys.filter(
+      (key) =>
+        key.startsWith('shonen-jump/') ||
+        key.startsWith('_thumbs/shonen-jump/')
+    ).length,
+    before.length - 1
+  )
+
+  const { root } = await store.loadRootIndex()
+
+  assert.deepEqual(
+    root.magazines.map((m) => m.slug),
+    ['shonen-jump']
+  )
+
+  const { index } =
+    await store.loadYearIndex('shonen-jump', 2026)
+
+  assert.equal(index.slug, 'shonen-jump')
+  assert.ok(index.issues['50'].images.length > 0)
+
+  const blob =
+    await store.getImageBlob(
+      'shonen-jump/2026/50/01-cover.jpg'
+    )
+
+  assert.equal(blob.size, 1000)
+})
+
+test('使えない・使用中のフォルダ名には変えられない', async () => {
+  await store.updateRootIndex((root) =>
+    library.upsertMagazine(root, {
+      slug: 'sunday',
+      name: 'サンデー'
+    })
+  )
+
+  await assert.rejects(
+    store.renameMagazine({
+      from: 'shonen-jump',
+      to: 'ジャンプ'
+    }),
+    (error) => error.code === 'invalid_slug'
+  )
+
+  await assert.rejects(
+    store.renameMagazine({
+      from: 'shonen-jump',
+      to: 'sunday'
+    }),
+    (error) => error.code === 'slug_taken'
+  )
+
+  await assert.rejects(
+    store.renameMagazine({
+      from: 'nothing',
+      to: 'other'
+    }),
+    (error) => error.code === 'not_found'
+  )
+
+  assert.ok(
+    bucket.objects.has(
+      'shonen-jump/2026/50/01-cover.jpg'
+    )
+  )
+})

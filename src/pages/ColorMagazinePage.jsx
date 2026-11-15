@@ -9,6 +9,7 @@ import {
 } from 'react-router-dom'
 import CloudImage from '../components/CloudImage'
 import CropSettings from '../components/CropSettings'
+import MagazineRename from '../components/MagazineRename'
 import {
   loadRootIndex,
   loadYearIndex,
@@ -539,6 +540,31 @@ function ColorMagazinePage({
                         magazine
                       }))
                     }
+                  }}
+                />
+              )}
+
+              {!state.fromCache && (
+                <MagazineRename
+                  key={state.magazine.slug}
+                  magazine={state.magazine}
+                  onRenamed={(magazine) => {
+                    if (!magazine) {
+                      return
+                    }
+
+                    if (magazine.slug !== slug) {
+                      navigate(
+                        `/color/${magazine.slug}?y=${state.year}`,
+                        { replace: true }
+                      )
+                      return
+                    }
+
+                    setState((current) => ({
+                      ...current,
+                      magazine
+                    }))
                   }}
                 />
               )}
