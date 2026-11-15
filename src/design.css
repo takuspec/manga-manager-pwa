@@ -1208,3 +1208,33 @@ button svg { flex-shrink: 0; vertical-align: middle; }
   font-size: 11px;
   font-variant-numeric: tabular-nums;
 }
+
+/* カラーページ: 下へスクロールすると隠れ、上へ戻すと出る見出し */
+.color-sticky-header {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  display: grid;
+  gap: 10px;
+  margin: -16px -20px 14px;
+  padding: max(16px, env(safe-area-inset-top)) 20px 12px;
+  background: var(--canvas);
+  box-shadow: 0 1px 0 var(--line);
+  transition: transform 0.2s ease;
+}
+
+.color-sticky-header.hidden {
+  transform: translateY(-100%);
+}
+
+.color-sticky-header .series-page-header {
+  margin-bottom: 0;
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .color-sticky-header {
+    transition: none;
+  }
+}

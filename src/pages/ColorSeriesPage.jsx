@@ -4,6 +4,7 @@ import {
   useParams
 } from 'react-router-dom'
 import CloudImage from '../components/CloudImage'
+import { useScrollTopOnOpen } from '../hooks/useScrollHeader'
 import ColorViewer from '../components/ColorViewer'
 import {
   loadRootIndex,
@@ -30,6 +31,8 @@ function ColorSeriesPage({
 }) {
   const params = useParams()
   const location = useLocation()
+
+  useScrollTopOnOpen()
 
   const slug = normalizeSlug(params.slug)
   const title =

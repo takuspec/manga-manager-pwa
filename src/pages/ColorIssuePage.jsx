@@ -3,7 +3,11 @@ import {
   useRef,
   useState
 } from 'react'
-import { useParams } from 'react-router-dom'
+import {
+  useLocation,
+  useParams
+} from 'react-router-dom'
+import { useScrollTopOnOpen } from '../hooks/useScrollHeader'
 import CloudImage from '../components/CloudImage'
 import ColorViewer from '../components/ColorViewer'
 import SeriesTagPicker from '../components/SeriesTagPicker'
@@ -99,6 +103,9 @@ function ColorIssuePage({
   navigate
 }) {
   const params = useParams()
+  const location = useLocation()
+
+  useScrollTopOnOpen()
 
   const slug = normalizeSlug(params.slug)
   const year = normalizeYear(params.year)
@@ -551,13 +558,19 @@ function ColorIssuePage({
       <div className="series-page-header">
         <button
           className="back-button"
-          onClick={() =>
+          onClick={() => {
+            // 一覧から来たときは、元のスクロール位置のまま戻る
+            if (location.key !== 'default') {
+              navigate(-1)
+              return
+            }
+
             navigate(
               slug && year
                 ? `/color/${slug}?y=${year}`
                 : '/color'
             )
-          }
+          }}
         >
           ← 戻る
         </button>

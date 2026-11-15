@@ -4,9 +4,11 @@ import {
   useState
 } from 'react'
 import {
+  useLocation,
   useParams,
   useSearchParams
 } from 'react-router-dom'
+import useScrollHeader from '../hooks/useScrollHeader'
 import CloudImage from '../components/CloudImage'
 import ImageView from '../components/ImageView'
 import CropSettings from '../components/CropSettings'
@@ -38,6 +40,9 @@ import {
   parseIssueLabel,
   thumbKey
 } from '../utils/colorLibrary'
+
+// 直前に表示した内容。戻ってきたときに、読み込みを待たずにすぐ出すために使う。
+const pageCache = new Map()
 
 // 号の代表画像。表紙があれば表紙、なければ先頭の1枚。
 function pickCover(images) {
@@ -85,17 +90,25 @@ function ColorMagazinePage({
       ? searchParams.get('s')
       : 'new'
 
+  const location = useLocation()
+
+  const loadKey =
+    `${slug}:${requestedYear}:${view}`
+
   const [state, setState] =
-    useState({
-      status: 'loading',
-      key: '',
-      magazine: null,
-      year: 0,
-      index: null,
-      seriesGroups: [],
-      fromCache: false,
-      error: ''
-    })
+    useState(
+      () =>
+        pageCache.get(loadKey) || {
+          status: 'loading',
+          key: '',
+          magazine: null,
+          year: 0,
+          index: null,
+          seriesGroups: [],
+          fromCache: false,
+          error: ''
+        }
+    )
 
   const [issueInput, setIssueInput] =
     useState('')
@@ -103,9 +116,6 @@ function ColorMagazinePage({
     useState('')
   const [formError, setFormError] =
     useState('')
-
-  const loadKey =
-    `${slug}:${requestedYear}:${view}`
 
   useEffect(() => {
     if (!slug) {
@@ -187,6 +197,8 @@ function ColorMagazinePage({
 
     load()
       .then((next) => {
+        pageCache.set(next.key, next)
+
         if (active) {
           setState(next)
         }
@@ -254,6 +266,13 @@ function ColorMagazinePage({
   const isSwitching =
     state.status === 'ready' &&
     state.key !== loadKey
+
+  const headerHidden =
+    useScrollHeader(
+      location.key,
+      state.status !== 'loading' &&
+        !isSwitching
+    )
 
   const yearOptions =
     state.magazine
@@ -381,51 +400,30 @@ function ColorMagazinePage({
 
   return (
     <div className="app">
-      <div className="series-page-header">
-        <button
-          className="back-button"
-          onClick={() => navigate('/color')}
-        >
-          ← 戻る
-        </button>
+      <div
+        className={
+          headerHidden
+            ? 'color-sticky-header hidden'
+            : 'color-sticky-header'
+        }
+      >
+        <div className="series-page-header">
+          <button
+            className="back-button"
+            onClick={() => navigate('/color')}
+          >
+            ← 戻る
+          </button>
 
-        <div className="title series-page-title">
-          {state.magazine?.name ||
-            'カラーページ'}
-        </div>
-
-        <div />
-      </div>
-
-      {!slug && (
-        <div className="color-notice error">
-          <p>ページが見つかりません。</p>
-        </div>
-      )}
-
-      {slug &&
-        state.status === 'loading' && (
-          <div className="empty-message">
-            読み込み中…
+          <div className="title series-page-title">
+            {state.magazine?.name ||
+              'カラーページ'}
           </div>
-        )}
 
-      {state.status === 'error' && (
-        <div className="color-notice error">
-          <p>{state.error}</p>
+          <div />
         </div>
-      )}
 
-      {state.status === 'ready' && (
-        <div className="color-page">
-          {state.fromCache && (
-            <div className="color-notice">
-              <p>
-                通信できないため、前回の内容を表示しています。
-              </p>
-            </div>
-          )}
-
+        {state.status === 'ready' && (
           <div
             className="color-view-switch"
             role="group"
@@ -461,6 +459,61 @@ function ColorMagazinePage({
               作品ごと
             </button>
           </div>
+        )}
+
+        {state.status === 'ready' &&
+          view === 'series' && (
+            <label className="color-toolbar-field">
+              <span>並べ順</span>
+              <select
+                value={sort}
+                onChange={(event) =>
+                  updateSearch({
+                    s: event.target.value
+                  })
+                }
+              >
+                {SERIES_SORTS.map((item) => (
+                  <option
+                    key={item.id}
+                    value={item.id}
+                  >
+                    {item.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+      </div>
+
+      {!slug && (
+        <div className="color-notice error">
+          <p>ページが見つかりません。</p>
+        </div>
+      )}
+
+      {slug &&
+        state.status === 'loading' && (
+          <div className="empty-message">
+            読み込み中…
+          </div>
+        )}
+
+      {state.status === 'error' && (
+        <div className="color-notice error">
+          <p>{state.error}</p>
+        </div>
+      )}
+
+      {state.status === 'ready' && (
+        <div className="color-page">
+          {state.fromCache && (
+            <div className="color-notice">
+              <p>
+                通信できないため、前回の内容を表示しています。
+              </p>
+            </div>
+          )}
 
           {view === 'issues' && (
             <>
@@ -662,29 +715,6 @@ function ColorMagazinePage({
                 })}
               </div>
             )}
-
-          {view === 'series' && (
-            <label className="color-toolbar-field">
-              <span>並べ順</span>
-              <select
-                value={sort}
-                onChange={(event) =>
-                  updateSearch({
-                    s: event.target.value
-                  })
-                }
-              >
-                {SERIES_SORTS.map((item) => (
-                  <option
-                    key={item.id}
-                    value={item.id}
-                  >
-                    {item.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-          )}
 
           {!isSwitching &&
             view === 'series' &&
