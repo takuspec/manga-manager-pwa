@@ -1,4 +1,8 @@
-import { useEffect, useState } from 'react'
+import {
+  useEffect,
+  useMemo,
+  useState
+} from 'react'
 import {
   useParams,
   useSearchParams
@@ -11,7 +15,15 @@ import {
   loadYearIndexes
 } from '../utils/colorStore'
 import {
+  findAppMagazine,
+  getCatalogRange,
+  getCatalogYears,
+  listCatalogIssues,
+  listCatalogSeries
+} from '../utils/colorCatalog'
+import {
   collectSeries,
+  compareIssueFolders,
   formatIssueFolder,
   issueFolder,
   listIssues,
@@ -30,7 +42,11 @@ function pickCover(images) {
   )
 }
 
-function ColorMagazinePage({ navigate }) {
+function ColorMagazinePage({
+  magazineList,
+  seriesList,
+  navigate
+}) {
   const params = useParams()
   const [searchParams, setSearchParams] =
     useSearchParams()
@@ -90,8 +106,19 @@ function ColorMagazinePage({ navigate }) {
         )
       }
 
+      // 号の一覧がある雑誌は最新号の年、ない雑誌は画像のある最新の年を開く
+      const range =
+        getCatalogRange(
+          magazine,
+          findAppMagazine(
+            magazine,
+            magazineList
+          )
+        )
+
       const year =
         requestedYear ||
+        range?.latest.year ||
         magazine.years[0] ||
         new Date().getFullYear()
 
@@ -161,7 +188,45 @@ function ColorMagazinePage({ navigate }) {
     return () => {
       active = false
     }
-  }, [slug, requestedYear, view, loadKey])
+  }, [
+    slug,
+    requestedYear,
+    view,
+    loadKey,
+    magazineList
+  ])
+
+  // アプリに登録済みの号数の決まりと作品から作る、号と作品の一覧
+  const appMagazine =
+    useMemo(
+      () =>
+        findAppMagazine(
+          state.magazine,
+          magazineList
+        ),
+      [state.magazine, magazineList]
+    )
+
+  const range =
+    useMemo(
+      () =>
+        getCatalogRange(
+          state.magazine,
+          appMagazine
+        ),
+      [state.magazine, appMagazine]
+    )
+
+  const catalogSeries =
+    useMemo(
+      () =>
+        listCatalogSeries(
+          seriesList,
+          appMagazine,
+          range
+        ),
+      [seriesList, appMagazine, range]
+    )
 
   const isSwitching =
     state.status === 'ready' &&
@@ -171,6 +236,7 @@ function ColorMagazinePage({ navigate }) {
     state.magazine
       ? Array.from(
           new Set([
+            ...getCatalogYears(range),
             ...state.magazine.years,
             state.year,
             new Date().getFullYear()
@@ -178,10 +244,69 @@ function ColorMagazinePage({ navigate }) {
         ).sort((a, b) => b - a)
       : []
 
+  // 画像のある号と、一覧にある号（まだ画像のないもの）を合わせて、新しい号から並べる
   const issues =
     state.index
-      ? listIssues(state.index).reverse()
+      ? (() => {
+          const registered =
+            new Map(
+              listIssues(state.index).map(
+                (issue) => [
+                  issue.folder,
+                  issue.images
+                ]
+              )
+            )
+
+          return Array.from(
+            new Set([
+              ...listCatalogIssues(
+                appMagazine,
+                state.year,
+                range
+              ),
+              ...registered.keys()
+            ])
+          )
+            .sort(compareIssueFolders)
+            .reverse()
+            .map((folder) => ({
+              folder,
+              images:
+                registered.get(folder) || []
+            }))
+        })()
       : []
+
+  // タグの付いた作品と、一覧にある作品（まだ画像のないもの）を合わせる
+  const seriesGroups =
+    (() => {
+      const tagged =
+        new Map(
+          state.seriesGroups.map((group) => [
+            group.title,
+            group
+          ])
+        )
+
+      return Array.from(
+        new Set([
+          ...catalogSeries,
+          ...tagged.keys()
+        ])
+      )
+        .sort((a, b) =>
+          a.localeCompare(b, 'ja')
+        )
+        .map(
+          (title) =>
+            tagged.get(title) || {
+              title,
+              count: 0,
+              cover: null
+            }
+        )
+    })()
 
   const updateSearch = (changes) => {
     const next = {}
@@ -455,7 +580,11 @@ function ColorMagazinePage({ navigate }) {
                     <button
                       key={issue.folder}
                       type="button"
-                      className="color-issue-card"
+                      className={
+                        cover
+                          ? 'color-issue-card'
+                          : 'color-issue-card empty'
+                      }
                       onClick={() =>
                         navigate(
                           `/color/${slug}/${state.year}/${issue.folder}`
@@ -463,15 +592,21 @@ function ColorMagazinePage({ navigate }) {
                       }
                     >
                       <div className="color-thumb">
-                        <CloudImage
-                          imageKey={thumbKey(
-                            slug,
-                            state.year,
-                            issue.folder,
-                            cover.file
-                          )}
-                          alt=""
-                        />
+                        {cover ? (
+                          <CloudImage
+                            imageKey={thumbKey(
+                              slug,
+                              state.year,
+                              issue.folder,
+                              cover.file
+                            )}
+                            alt=""
+                          />
+                        ) : (
+                          <div className="cloud-image-placeholder">
+                            未登録
+                          </div>
+                        )}
                       </div>
                       <span className="color-issue-label">
                         {formatIssueFolder(
@@ -479,7 +614,9 @@ function ColorMagazinePage({ navigate }) {
                         )}
                       </span>
                       <small>
-                        {issue.images.length}枚
+                        {cover
+                          ? `${issue.images.length}枚`
+                          : '未登録'}
                       </small>
                     </button>
                   )
@@ -489,8 +626,7 @@ function ColorMagazinePage({ navigate }) {
 
           {!isSwitching &&
             view === 'series' &&
-            state.seriesGroups.length ===
-              0 && (
+            seriesGroups.length === 0 && (
               <div className="empty-message">
                 作品タグの付いた画像はまだありません。号の画面で「編集」から付けられます。
               </div>
@@ -499,12 +635,16 @@ function ColorMagazinePage({ navigate }) {
           {!isSwitching &&
             view === 'series' && (
               <div className="color-issue-grid">
-                {state.seriesGroups.map(
+                {seriesGroups.map(
                   (group) => (
                     <button
                       key={group.title}
                       type="button"
-                      className="color-issue-card"
+                      className={
+                        group.cover
+                          ? 'color-issue-card'
+                          : 'color-issue-card empty'
+                      }
                       onClick={() =>
                         navigate(
                           `/color/${slug}/series/${encodeURIComponent(
@@ -514,21 +654,29 @@ function ColorMagazinePage({ navigate }) {
                       }
                     >
                       <div className="color-thumb">
-                        <CloudImage
-                          imageKey={thumbKey(
-                            slug,
-                            group.cover.year,
-                            group.cover.folder,
-                            group.cover.file
-                          )}
-                          alt=""
-                        />
+                        {group.cover ? (
+                          <CloudImage
+                            imageKey={thumbKey(
+                              slug,
+                              group.cover.year,
+                              group.cover.folder,
+                              group.cover.file
+                            )}
+                            alt=""
+                          />
+                        ) : (
+                          <div className="cloud-image-placeholder">
+                            未登録
+                          </div>
+                        )}
                       </div>
                       <span className="color-issue-label">
                         {group.title}
                       </span>
                       <small>
-                        {group.count}枚
+                        {group.count > 0
+                          ? `${group.count}枚`
+                          : '未登録'}
                       </small>
                     </button>
                   )

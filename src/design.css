@@ -1114,3 +1114,20 @@ button svg { flex-shrink: 0; vertical-align: middle; }
   font-size: 16px;
   font-variant-numeric: tabular-nums;
 }
+
+/* カラーページ: まだ画像のない号・作品と、作品タグの見出し */
+.color-issue-card.empty .color-thumb {
+  border: 1px dashed #33445e;
+  background: transparent;
+}
+
+.color-issue-card.empty .color-issue-label {
+  color: var(--muted);
+}
+
+.series-picker-heading {
+  margin: 8px 0 2px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 650;
+}

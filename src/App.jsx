@@ -663,6 +663,8 @@ function App() {
         path="/color/:slug"
         element={
           <ColorMagazinePage
+            magazineList={magazineList}
+            seriesList={seriesList}
             navigate={navigate}
           />
         }

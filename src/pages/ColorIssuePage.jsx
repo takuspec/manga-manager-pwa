@@ -9,6 +9,10 @@ import ColorViewer from '../components/ColorViewer'
 import SeriesTagPicker from '../components/SeriesTagPicker'
 import prepareImage from '../utils/prepareImage'
 import {
+  findAppMagazine,
+  listSeriesInIssue
+} from '../utils/colorCatalog'
+import {
   deleteImageFiles,
   getCachedRootIndex,
   loadRootIndex,
@@ -34,22 +38,24 @@ import {
 // 1回に選べる枚数。選び間違いで大量に送ってしまうのを防ぐ。
 const MAX_FILES_PER_BATCH = 30
 
+// カラーページの雑誌に対応する、アプリ側の雑誌
+function getAppMagazine(magazineList, slug) {
+  return findAppMagazine(
+    getCachedRootIndex()?.magazines.find(
+      (magazine) => magazine.slug === slug
+    ),
+    magazineList
+  )
+}
+
 // 作品タグの候補。この雑誌の作品を先に、ほかの雑誌の作品を後ろに並べる。
 function buildSeriesChoices(
   seriesList,
   magazineList,
   slug
 ) {
-  const magazineName =
-    getCachedRootIndex()?.magazines.find(
-      (magazine) => magazine.slug === slug
-    )?.name
-
   const localMagazineId =
-    magazineList.find(
-      (magazine) =>
-        magazine.name === magazineName
-    )?.id
+    getAppMagazine(magazineList, slug)?.id
 
   const byTitle = (a, b) =>
     a.localeCompare(b, 'ja')
@@ -944,6 +950,15 @@ function ColorIssuePage({
             seriesList,
             magazineList,
             slug
+          )}
+          featured={listSeriesInIssue(
+            seriesList,
+            getAppMagazine(
+              magazineList,
+              slug
+            ),
+            year,
+            folder
           )}
           value={tagValue || []}
           onDone={handleTagsDone}

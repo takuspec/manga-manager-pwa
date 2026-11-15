@@ -6,8 +6,10 @@ const MAX_VISIBLE_CHOICES = 60
 
 // 画像に付ける作品を選ぶ画面。
 // 候補はアプリに登録済みの作品名。候補にない名前も、入力して追加できる。
+// featured（その号に載っていた作品）は、絞り込んでいないときに先頭へまとめて出す。
 function SeriesTagPicker({
   choices,
+  featured = [],
   value,
   onDone,
   onCancel
@@ -21,22 +23,52 @@ function SeriesTagPicker({
 
   const keyword = query.trim()
 
+  const featuredSet = new Set(featured)
+
+  const allChoices =
+    Array.from(
+      new Set([...featured, ...choices])
+    )
+
+  const showFeatured =
+    !keyword && featured.length > 0
+
   const matches =
     keyword
-      ? choices.filter((title) =>
+      ? allChoices.filter((title) =>
           title
             .toLowerCase()
             .includes(keyword.toLowerCase())
         )
-      : choices
+      : showFeatured
+        ? choices.filter(
+            (title) => !featuredSet.has(title)
+          )
+        : choices
 
   const visible =
     matches.slice(0, MAX_VISIBLE_CHOICES)
 
   const canAddTyped =
     Boolean(keyword) &&
-    !choices.includes(keyword) &&
+    !allChoices.includes(keyword) &&
     !selected.includes(keyword)
+
+  const renderItem = (title) => (
+    <button
+      key={title}
+      type="button"
+      className={
+        selected.includes(title)
+          ? 'series-picker-item selected'
+          : 'series-picker-item'
+      }
+      aria-pressed={selected.includes(title)}
+      onClick={() => toggle(title)}
+    >
+      {title}
+    </button>
+  )
 
   const toggle = (title) => {
     setSelected((current) => {
@@ -119,23 +151,20 @@ function SeriesTagPicker({
             </button>
           )}
 
-          {visible.map((title) => (
-            <button
-              key={title}
-              type="button"
-              className={
-                selected.includes(title)
-                  ? 'series-picker-item selected'
-                  : 'series-picker-item'
-              }
-              aria-pressed={selected.includes(
-                title
-              )}
-              onClick={() => toggle(title)}
-            >
-              {title}
-            </button>
-          ))}
+          {showFeatured && (
+            <>
+              <h3 className="series-picker-heading">
+                この号に載っている作品（
+                {featured.length}）
+              </h3>
+              {featured.map(renderItem)}
+              <h3 className="series-picker-heading">
+                ほかの作品
+              </h3>
+            </>
+          )}
+
+          {visible.map(renderItem)}
 
           {matches.length >
             visible.length && (
@@ -148,7 +177,8 @@ function SeriesTagPicker({
           )}
 
           {matches.length === 0 &&
-            !canAddTyped && (
+            !canAddTyped &&
+            !showFeatured && (
               <p className="cloud-settings-note">
                 該当する作品がありません。
               </p>
