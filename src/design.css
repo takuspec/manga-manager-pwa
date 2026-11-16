@@ -1290,3 +1290,51 @@ button svg { flex-shrink: 0; vertical-align: middle; }
   gap: 10px;
   margin-bottom: 12px;
 }
+
+/* 【一時的】見開きのまとめ */
+.color-temp-tool {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 14px;
+  padding: 14px;
+  border: 2px dashed #e0a100;
+  border-radius: 14px;
+  background: rgba(255, 196, 0, 0.12);
+}
+
+.color-temp-tool-title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.color-temp-tool-text {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.color-temp-tool-button {
+  min-height: 52px;
+  border: none;
+  border-radius: 12px;
+  background: #e0a100;
+  color: #fff;
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.color-temp-tool-button:disabled,
+.color-temp-tool-undo:disabled {
+  opacity: 0.5;
+}
+
+.color-temp-tool-undo {
+  min-height: 44px;
+  border: 1px solid #e0a100;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--text);
+  font-size: 15px;
+}

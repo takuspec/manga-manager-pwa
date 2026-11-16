@@ -401,3 +401,19 @@ export default async function prepareImage(
     source.release()
   }
 }
+
+// 【一時的】登録済みの画像（サムネイル）から、見開き判定用の特徴を作る
+export async function signatureFromBlob(blob) {
+  const source = await loadSource(blob)
+
+  try {
+    return createSignature(source, {
+      x: 0,
+      y: 0,
+      width: source.width,
+      height: source.height
+    })
+  } finally {
+    source.release?.()
+  }
+}
