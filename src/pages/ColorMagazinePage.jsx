@@ -22,6 +22,7 @@ import {
   loadYearIndexes
 } from '../utils/colorStore'
 import {
+  ONE_SHOT_TAG,
   SERIES_FILTERS,
   SERIES_SORTS,
   arrangeSeriesGroups,
@@ -328,15 +329,41 @@ function ColorMagazinePage({
       : []
 
   // アプリの連載データの作品と、タグの付いた作品を合わせて、絞り込み・並べ替える
-  const seriesGroups =
+  const arrangedSeries =
     arrangeSeriesGroups(
       mergeSeriesGroups(
         catalogSeries,
-        state.seriesGroups
+        state.seriesGroups.filter(
+          (group) =>
+            group.title !== ONE_SHOT_TAG
+        )
       ),
       filter,
       sort
     )
+
+  // 読み切りは1枚のカードにまとめ、「すべて」のときに先頭へ出す
+  const oneShotTagged =
+    state.seriesGroups.find(
+      (group) => group.title === ONE_SHOT_TAG
+    )
+
+  const seriesGroups =
+    filter === 'all'
+      ? [
+          {
+            title: ONE_SHOT_TAG,
+            status: 'oneshot',
+            startLabel: '',
+            duration: '',
+            imageId: '',
+            image: '',
+            count: oneShotTagged?.count || 0,
+            cover: oneShotTagged?.cover || null
+          },
+          ...arrangedSeries
+        ]
+      : arrangedSeries
 
   const updateSearch = (changes) => {
     const next = {}
@@ -715,10 +742,25 @@ function ColorMagazinePage({
                     }
                   >
                     <div className="cover">
-                      <ImageView
-                        imageId={group.imageId}
-                        fallbackImage={group.image}
-                      />
+                      {/* 連載の作品は連載一覧と同じ画像。読み切りなどはカラーページの画像 */}
+                      {!group.imageId &&
+                      !group.image &&
+                      group.cover ? (
+                        <CloudImage
+                          imageKey={thumbKey(
+                            slug,
+                            group.cover.year,
+                            group.cover.folder,
+                            group.cover.file
+                          )}
+                          alt=""
+                        />
+                      ) : (
+                        <ImageView
+                          imageId={group.imageId}
+                          fallbackImage={group.image}
+                        />
+                      )}
                     </div>
 
                     <div className="card-title">
@@ -728,7 +770,9 @@ function ColorMagazinePage({
                     {group.startLabel && (
                       <div className="card-start-issue">
                         <span className="card-start-label">
-                          開始
+                          {group.status === 'oneshot'
+                            ? '掲載'
+                            : '開始'}
                         </span>
                         <span>
                           {group.startLabel}
@@ -743,8 +787,10 @@ function ColorMagazinePage({
                     </div>
 
                     <div className="card-unread">
-                      {group.duration ||
-                        '期間未設定'}
+                      {group.status === 'oneshot'
+                        ? '読み切り'
+                        : group.duration ||
+                          '期間未設定'}
                     </div>
                   </button>
                 ))}

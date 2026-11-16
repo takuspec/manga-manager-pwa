@@ -7,7 +7,8 @@ import { createPortal } from 'react-dom'
 import { getImageBlob } from '../utils/colorStore'
 import {
   formatIssueFolder,
-  getImageLabel,
+  getKindLabel,
+  normalizeKind,
   imageKey,
   thumbKey
 } from '../utils/colorLibrary'
@@ -494,7 +495,6 @@ function ColorViewer({
   folder,
   images,
   initialIndex,
-  showIssue = false,
   onClose
 }) {
   const [position, setPosition] =
@@ -589,17 +589,12 @@ function ColorViewer({
         onSwipe={move}
       />
 
+      {/* 年と号・種類・何枚目か */}
       <div className="color-viewer-info">
-        {showIssue
-          ? `${imageYear}年 ${formatIssueFolder(
-              imageFolder
-            )}・`
-          : ''}
-        {getImageLabel(image)}・
+        {imageYear}年{' '}
+        {formatIssueFolder(imageFolder)}・
+        {getKindLabel(normalizeKind(image.kind))}・
         {index + 1} / {images.length}
-        {image.width
-          ? `・${image.width} × ${image.height}px`
-          : ''}
       </div>
 
       <button

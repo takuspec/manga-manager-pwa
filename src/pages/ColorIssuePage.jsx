@@ -1,7 +1,8 @@
 import {
   useEffect,
   useRef,
-  useState
+  useState,
+  useSyncExternalStore
 } from 'react'
 import { useParams } from 'react-router-dom'
 import {
@@ -12,6 +13,7 @@ import CloudImage from '../components/CloudImage'
 import ColorViewer from '../components/ColorViewer'
 import SeriesTagPicker from '../components/SeriesTagPicker'
 import prepareImage from '../utils/prepareImage'
+import uploadQueue from '../utils/uploadQueue'
 import {
   findAppMagazine,
   listSeriesInIssue
@@ -21,18 +23,17 @@ import {
   getCachedRootIndex,
   loadRootIndex,
   loadYearIndex,
-  updateYearIndex,
-  uploadImages
+  updateYearIndex
 } from '../utils/colorStore'
 import {
   IMAGE_KINDS,
   formatIssueFolder,
-  getImageLabel,
   getKindLabel,
   groupColorPieces,
   isSpreadSize,
   matchSpreadPages,
   moveImageInIssue,
+  normalizeKind,
   normalizeSlug,
   normalizeYear,
   parseIssueFolder,
@@ -213,6 +214,69 @@ function ColorIssuePage({
       active = false
     }
   }, [isValid, slug, year])
+
+  // 裏で送っている画像のうち、この号の分
+  const queueState =
+    useSyncExternalStore(
+      uploadQueue.subscribe,
+      uploadQueue.getSnapshot
+    )
+
+  const queueKey = `${slug}/${year}/${folder}`
+
+  const queuedHere =
+    queueState.batches.filter(
+      (batch) =>
+        batch.slug === slug &&
+        batch.year === year &&
+        batch.folder === folder
+    )
+
+  const queuedCount =
+    queuedHere
+      .filter(
+        (batch) => batch.status !== 'error'
+      )
+      .reduce(
+        (total, batch) => total + batch.count,
+        0
+      )
+
+  const failedHere =
+    queuedHere.filter(
+      (batch) => batch.status === 'error'
+    )
+
+  const finishedCount =
+    queueState.finished[queueKey] || 0
+
+  // この号の送信が終わったら、一覧を読み直して登録した画像を出す
+  useEffect(() => {
+    if (!isValid || finishedCount === 0) {
+      return undefined
+    }
+
+    let active = true
+
+    loadYearIndex(slug, year)
+      .then((result) => {
+        if (active && !result.fromCache) {
+          setState({
+            status: 'ready',
+            index: result.index,
+            fromCache: false,
+            error: ''
+          })
+        }
+      })
+      .catch((error) => {
+        console.error(error)
+      })
+
+    return () => {
+      active = false
+    }
+  }, [isValid, slug, year, finishedCount])
 
   const images =
     state.index?.issues[folder]?.images ||
@@ -484,59 +548,30 @@ function ColorIssuePage({
     })
   }
 
+  // 画像を送信待ちの行列に入れて、すぐに次の登録へ進めるようにする。
+  // 送信は裏で1件ずつ行い、終わるとこの号の一覧に出る。
   const handleRegister = async () => {
     const items = pending.items
 
     setMessage(null)
-    setBusy(`送信中 0 / ${items.length}`)
 
     try {
-      const result =
-        await uploadImages({
-          slug,
-          year,
-          folder,
-          prepared: items.map((item) => ({
-            ...item.prepared,
-            kind: item.kind,
-            series: item.series
-          })),
-          onProgress: (done) => {
-            setBusy(
-              `送信中 ${done} / ${items.length}`
-            )
-          }
-        })
+      await uploadQueue.enqueue({
+        slug,
+        year,
+        folder,
+        items: items.map((item) => ({
+          ...item.prepared,
+          kind: item.kind,
+          series: item.series
+        }))
+      })
 
-      if (result.index) {
-        setIndex(result.index)
-      }
-
-      if (result.failure) {
-        // 送れなかった分だけを確認用の一覧に残す
-        const done = result.added.length
-
-        pendingFilesRef.current =
-          pendingFilesRef.current.slice(done)
-
-        setPending({
-          ...pending,
-          items: items.slice(done)
-        })
-
-        setMessage({
-          type: 'error',
-          text: `${items.length} 枚中 ${done} 枚を登録しました。残りは失敗しました: ${
-            result.failure.message || ''
-          }`
-        })
-      } else {
-        clearPending()
-        setMessage({
-          type: 'ok',
-          text: `${result.added.length} 枚を登録しました。`
-        })
-      }
+      clearPending()
+      setMessage({
+        type: 'ok',
+        text: `${items.length} 枚の送信を始めました。終わるのを待たずに、ほかの号の登録へ進めます。`
+      })
     } catch (error) {
       setMessage({
         type: 'error',
@@ -544,8 +579,6 @@ function ColorIssuePage({
           error?.message ||
           '登録できませんでした。'
       })
-    } finally {
-      setBusy('')
     }
   }
 
@@ -964,6 +997,52 @@ function ColorIssuePage({
             </section>
           )}
 
+          {queuedCount > 0 && (
+            <div
+              className="cloud-settings-message"
+              role="status"
+            >
+              この号の {queuedCount} 枚を送信しています。終わると下の一覧に出ます。
+            </div>
+          )}
+
+          {failedHere.map((batch) => (
+            <div
+              key={batch.id}
+              className="cloud-settings-message error"
+              role="alert"
+            >
+              <span>
+                {batch.count} 枚を送信できませんでした: {batch.error}
+              </span>
+              <div className="cloud-settings-actions">
+                <button
+                  type="button"
+                  onClick={() =>
+                    uploadQueue.retry(batch.id)
+                  }
+                >
+                  もう一度送る
+                </button>
+                <button
+                  type="button"
+                  className="cloud-settings-secondary"
+                  onClick={() => {
+                    if (
+                      window.confirm(
+                        `送信できなかった ${batch.count} 枚を取り消しますか？`
+                      )
+                    ) {
+                      uploadQueue.discard(batch.id)
+                    }
+                  }}
+                >
+                  取り消す
+                </button>
+              </div>
+            </div>
+          ))}
+
           {busy && (
             <div
               className="cloud-settings-message"
@@ -997,13 +1076,24 @@ function ColorIssuePage({
             {images.map((image, position) => (
               <div
                 key={image.file}
-                className="color-image-card"
+                className={
+                  isSpreadSize(image)
+                    ? 'color-image-card spread'
+                    : 'color-image-card'
+                }
               >
                 <button
                   type="button"
                   className="color-thumb"
-                  aria-label={`${getImageLabel(
-                    image
+                  style={
+                    isSpreadSize(image)
+                      ? {
+                          aspectRatio: `${image.width} / ${image.height}`
+                        }
+                      : undefined
+                  }
+                  aria-label={`${getKindLabel(
+                    normalizeKind(image.kind)
                   )}を全画面で表示`}
                   onClick={() =>
                     setViewerIndex(position)
@@ -1021,7 +1111,9 @@ function ColorIssuePage({
                 </button>
 
                 <span className="color-kind-badge">
-                  {getImageLabel(image)}
+                  {getKindLabel(
+                    normalizeKind(image.kind)
+                  )}
                 </span>
 
                 {!isEditing &&

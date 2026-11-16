@@ -1,12 +1,14 @@
 import { useState } from 'react'
 import { createPortal } from 'react-dom'
 import { normalizeSeriesTags } from '../utils/colorLibrary'
+import { ONE_SHOT_TAG } from '../utils/colorCatalog'
 
 const MAX_VISIBLE_CHOICES = 60
 
 // 画像に付ける作品を選ぶ画面。
 // 候補はアプリに登録済みの作品名。候補にない名前も、入力して追加できる。
 // featured（その号に載っていた作品）は、絞り込んでいないときに先頭へまとめて出す。
+// 読み切りは作品名ごとに分けず、「読み切り」1つのタグにまとめる（いつも先頭に出す）。
 function SeriesTagPicker({
   choices,
   featured = [],
@@ -38,8 +40,10 @@ function SeriesTagPicker({
   const showFeatured =
     !keyword && featured.length > 0
 
-  const searchable =
-    showAll ? allChoices : featured
+  const searchable = [
+    ONE_SHOT_TAG,
+    ...(showAll ? allChoices : featured)
+  ]
 
   const matches =
     keyword
@@ -59,10 +63,6 @@ function SeriesTagPicker({
   const visible =
     matches.slice(0, MAX_VISIBLE_CHOICES)
 
-  const canAddTyped =
-    Boolean(keyword) &&
-    !allChoices.includes(keyword) &&
-    !selected.includes(keyword)
 
   const renderItem = (title) => (
     <button
@@ -148,18 +148,7 @@ function SeriesTagPicker({
         />
 
         <div className="series-picker-list">
-          {canAddTyped && (
-            <button
-              type="button"
-              className="series-picker-item"
-              onClick={() => {
-                toggle(keyword)
-                setQuery('')
-              }}
-            >
-              「{keyword}」を追加
-            </button>
-          )}
+          {!keyword && renderItem(ONE_SHOT_TAG)}
 
           {showFeatured && (
             <>
@@ -199,7 +188,6 @@ function SeriesTagPicker({
           )}
 
           {matches.length === 0 &&
-            !canAddTyped &&
             !showFeatured &&
             showAll && (
               <p className="cloud-settings-note">

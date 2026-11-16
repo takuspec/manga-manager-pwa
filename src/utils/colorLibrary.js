@@ -1140,6 +1140,54 @@ export function listSeriesImages(
   return images
 }
 
+// 作品ごとの画像の並べ順
+export const SERIES_IMAGE_SORTS = [
+  { id: 'new', label: '新しい順' },
+  { id: 'old', label: '古い順' },
+  { id: 'opening', label: '巻頭カラーが先' },
+  { id: 'center', label: 'センターカラーが先' }
+]
+
+// listSeriesImages の結果（新しい号から順）を並べ替える。
+// 同じ号の中は、号の画面と同じ順のまま。
+// 巻頭・センターが先の並びでは、その種類を先に、それぞれ新しい号から並べる。
+export function arrangeSeriesImages(
+  images,
+  sort = 'new'
+) {
+  const withOrder =
+    images.map((image, order) => ({
+      image,
+      order,
+      serial:
+        image.year * 100 +
+        (parseIssueFolder(image.folder)?.start ||
+          0)
+    }))
+
+  if (sort === 'old') {
+    withOrder.sort(
+      (a, b) =>
+        a.serial - b.serial || a.order - b.order
+    )
+  } else if (
+    sort === 'opening' ||
+    sort === 'center'
+  ) {
+    const rank = (entry) =>
+      normalizeKind(entry.image.kind) === sort
+        ? 0
+        : 1
+
+    withOrder.sort(
+      (a, b) =>
+        rank(a) - rank(b) || a.order - b.order
+    )
+  }
+
+  return withOrder.map((entry) => entry.image)
+}
+
 export function listIssues(index) {
   return Object.keys(index?.issues || {})
     .sort(compareIssueFolders)

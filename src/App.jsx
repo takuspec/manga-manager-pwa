@@ -24,6 +24,7 @@ import WeeklyMergedIssuesPage from './pages/WeeklyMergedIssuesPage'
 import TimelineIndexPage from './pages/TimelineIndexPage'
 import TimelinePage from './pages/TimelinePage'
 import CloudSettingsPage from './pages/CloudSettingsPage'
+import UploadQueueStatus from './components/UploadQueueStatus'
 import ColorIndexPage from './pages/ColorIndexPage'
 import ColorMagazinePage from './pages/ColorMagazinePage'
 import ColorIssuePage from './pages/ColorIssuePage'
@@ -889,6 +890,8 @@ function App() {
       />
 
     </Routes>
+
+    <UploadQueueStatus />
     </>
   )
 }

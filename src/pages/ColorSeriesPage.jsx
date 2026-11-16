@@ -1,5 +1,8 @@
 import { useEffect, useState } from 'react'
-import { useParams } from 'react-router-dom'
+import {
+  useParams,
+  useSearchParams
+} from 'react-router-dom'
 import CloudImage from '../components/CloudImage'
 import {
   useGoBack,
@@ -11,26 +14,41 @@ import {
   loadYearIndexes
 } from '../utils/colorStore'
 import {
+  ONE_SHOT_TAG,
   SERIES_STATUS_LABELS,
   describeSeriesPeriod,
   findAppMagazine
 } from '../utils/colorCatalog'
 import {
   formatIssueFolder,
-  getImageLabel,
+  SERIES_IMAGE_SORTS,
+  arrangeSeriesImages,
+  getKindLabel,
+  isSpreadSize,
+  normalizeKind,
   listSeriesImages,
   normalizeSlug,
   thumbKey
 } from '../utils/colorLibrary'
 
-// 1つの作品のタグが付いたカラーページを、新しい号から順に並べる
+// 1つの作品のタグが付いたカラーページを並べる（並べ順は選べる）
 function ColorSeriesPage({
   magazineList,
   seriesList
 }) {
   const params = useParams()
+  const [searchParams, setSearchParams] =
+    useSearchParams()
 
   useScrollTopOnOpen()
+
+  const sort =
+    SERIES_IMAGE_SORTS.some(
+      (item) =>
+        item.id === searchParams.get('s')
+    )
+      ? searchParams.get('s')
+      : 'new'
 
   const slug = normalizeSlug(params.slug)
 
@@ -53,6 +71,9 @@ function ColorSeriesPage({
 
   const [viewerIndex, setViewerIndex] =
     useState(null)
+
+  const images =
+    arrangeSeriesImages(state.images, sort)
 
   useEffect(() => {
     if (!slug || !title) {
@@ -201,21 +222,68 @@ function ColorSeriesPage({
             </p>
           )}
 
+          {!series &&
+            title === ONE_SHOT_TAG && (
+              <p className="color-series-row-meta">
+                <span className="color-status-badge oneshot">
+                  読み切り
+                </span>
+              </p>
+            )}
+
           {state.images.length === 0 && (
             <div className="empty-message">
               この作品のタグが付いた画像はありません。
             </div>
           )}
 
+          {state.images.length > 1 && (
+            <label className="color-toolbar-field">
+              <span>並べ順</span>
+              <select
+                value={sort}
+                onChange={(event) => {
+                  setViewerIndex(null)
+                  setSearchParams(
+                    event.target.value === 'new'
+                      ? {}
+                      : { s: event.target.value },
+                    { replace: true }
+                  )
+                }}
+              >
+                {SERIES_IMAGE_SORTS.map((item) => (
+                  <option
+                    key={item.id}
+                    value={item.id}
+                  >
+                    {item.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+
           <div className="color-image-grid">
-            {state.images.map(
+            {images.map(
               (image, position) => (
                 <div
                   key={`${image.year}/${image.folder}/${image.file}`}
-                  className="color-image-card"
+                  className={
+                    isSpreadSize(image)
+                      ? 'color-image-card spread'
+                      : 'color-image-card'
+                  }
                 >
                   <button
                     type="button"
+                    style={
+                      isSpreadSize(image)
+                        ? {
+                            aspectRatio: `${image.width} / ${image.height}`
+                          }
+                        : undefined
+                    }
                     className="color-thumb"
                     aria-label={`${image.year}年 ${formatIssueFolder(
                       image.folder
@@ -236,7 +304,9 @@ function ColorSeriesPage({
                   </button>
 
                   <span className="color-kind-badge">
-                    {getImageLabel(image)}
+                    {getKindLabel(
+                      normalizeKind(image.kind)
+                    )}
                   </span>
 
                   <span className="color-series-line">
@@ -253,12 +323,11 @@ function ColorSeriesPage({
       )}
 
       {viewerIndex !== null &&
-        state.images.length > 0 && (
+        images.length > 0 && (
           <ColorViewer
             slug={slug}
-            images={state.images}
+            images={images}
             initialIndex={viewerIndex}
-            showIssue
             onClose={() =>
               setViewerIndex(null)
             }

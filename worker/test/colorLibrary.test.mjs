@@ -28,6 +28,7 @@ import {
   suggestKinds,
   getImageLabel,
   groupColorPieces,
+  arrangeSeriesImages,
   matchSpreadPages,
   signatureDistance,
   normalizeKind,
@@ -767,4 +768,40 @@ test('切り落としの固定値: 検査と保存', () => {
 
   root = setMagazineCrops(root, 'jump', {})
   assert.deepEqual(root.magazines[0].crops, {})
+})
+
+test('作品ごとの画像の並べ順', () => {
+  // listSeriesImages と同じく新しい号から順
+  const images = [
+    { year: 2026, folder: '50', file: 'a', kind: 'center' },
+    { year: 2026, folder: '50', file: 'b', kind: 'center' },
+    { year: 2026, folder: '04-05', file: 'c', kind: 'opening' },
+    { year: 2025, folder: '30', file: 'd', kind: 'spread' },
+    { year: 2025, folder: '10', file: 'e', kind: 'center' }
+  ]
+
+  const files = (list) => list.map((image) => image.file)
+
+  assert.deepEqual(
+    files(arrangeSeriesImages(images, 'new')),
+    ['a', 'b', 'c', 'd', 'e']
+  )
+  // 古い順でも、同じ号の中の順は変えない
+  assert.deepEqual(
+    files(arrangeSeriesImages(images, 'old')),
+    ['e', 'd', 'c', 'a', 'b']
+  )
+  // 以前の「見開き」も巻頭カラーとして先に並ぶ
+  assert.deepEqual(
+    files(arrangeSeriesImages(images, 'opening')),
+    ['c', 'd', 'a', 'b', 'e']
+  )
+  assert.deepEqual(
+    files(arrangeSeriesImages(images, 'center')),
+    ['a', 'b', 'e', 'c', 'd']
+  )
+  assert.deepEqual(
+    files(arrangeSeriesImages(images, 'xxx')),
+    ['a', 'b', 'c', 'd', 'e']
+  )
 })

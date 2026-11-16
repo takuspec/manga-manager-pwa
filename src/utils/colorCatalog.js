@@ -355,8 +355,12 @@ export const SERIES_SORTS = [
 export const SERIES_STATUS_LABELS = {
   ongoing: '連載中',
   paused: '休載中',
-  completed: '完結'
+  completed: '完結',
+  oneshot: '読み切り'
 }
+
+// 読み切りはまとめて1つの作品タグにする（作品名ごとには分けない）
+export const ONE_SHOT_TAG = '読み切り'
 
 function normalizeStatus(value) {
   return value === 'completed' ||

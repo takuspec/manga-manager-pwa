@@ -1238,3 +1238,47 @@ button svg { flex-shrink: 0; vertical-align: middle; }
   overflow-y: auto;
   overscroll-behavior: contain;
 }
+
+/* 読み切りの印 */
+.color-status-badge.oneshot {
+  border-color: #a855f7;
+  color: #e9d5ff;
+}
+
+/* 裏で送っている画像の状況（画面の下に出す） */
+.upload-queue-status {
+  position: fixed;
+  left: 50%;
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 92px);
+  z-index: 65;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: max-content;
+  max-width: calc(100% - 32px);
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: rgba(17, 28, 46, 0.95);
+  color: var(--text);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  box-shadow: 0 8px 24px #0008;
+}
+
+.upload-queue-status.error {
+  border-color: #7f1d1d;
+  color: #fecaca;
+}
+
+.upload-queue-status button {
+  min-height: 32px;
+  padding: 0 12px;
+  font-size: 12px;
+}
+
+/* 見開きは2列分を使って表示する */
+.color-image-card.spread {
+  grid-column: 1 / -1;
+}
