@@ -348,10 +348,28 @@ export async function uploadImages({
       latest.index.issues[folder]?.images
     )
 
-  for (const item of prepared) {
+  // 送る前にファイル名を決めておく（見開きのページから見開きを指すため）。
+  // 送信は先頭から順で、失敗したらそこで止めるので、この名前のとおりに付く。
+  const files =
+    prepared.map((item, position) =>
+      buildFileName(
+        seq + position,
+        item.kind || kind
+      )
+    )
+
+  for (const [position, item] of prepared.entries()) {
     // 種類は1枚ごとに決められる。指定がなければ全体の指定を使う。
     const itemKind = item.kind || kind
-    const file = buildFileName(seq, itemKind)
+    const file = files[position]
+
+    const pageOf =
+      Number.isInteger(item.pageOf) &&
+      item.pageOf >= 0 &&
+      item.pageOf < files.length &&
+      item.pageOf !== position
+        ? files[item.pageOf]
+        : ''
 
     try {
       const fullKey =
@@ -380,6 +398,7 @@ export async function uploadImages({
         seq,
         kind: itemKind,
         series: item.series || [],
+        pageOf,
         width: item.width,
         height: item.height,
         bytes: item.full.size,

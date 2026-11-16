@@ -614,3 +614,36 @@ test('使えない・使用中のフォルダ名には変えられない', async
     )
   )
 })
+
+test('見開きの各ページは、送ったあとも見開きのファイル名で対応が残る', async () => {
+  const items = prepared(3)
+
+  items[0].kind = 'center'
+  items[0].width = 2732
+  items[0].height = 1994
+  items[1].kind = 'center'
+  items[1].pageOf = 0
+  items[2].kind = 'center'
+  items[2].pageOf = 0
+
+  const result =
+    await store.uploadImages({
+      slug: 'shonen-jump',
+      year: 2026,
+      folder: '47',
+      prepared: items
+    })
+
+  assert.equal(result.failure, null)
+  assert.deepEqual(
+    result.index.issues['47'].images.map((image) => [
+      image.file,
+      image.pageOf
+    ]),
+    [
+      ['01-center.jpg', ''],
+      ['02-center.jpg', '01-center.jpg'],
+      ['03-center.jpg', '01-center.jpg']
+    ]
+  )
+})

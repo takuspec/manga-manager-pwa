@@ -29,6 +29,8 @@ import {
   getImageLabel,
   groupColorPieces,
   arrangeSeriesImages,
+  hideSpreadPages,
+  setSpreadPagesInIssue,
   matchSpreadPages,
   signatureDistance,
   normalizeKind,
@@ -770,14 +772,14 @@ test('切り落としの固定値: 検査と保存', () => {
   assert.deepEqual(root.magazines[0].crops, {})
 })
 
-test('作品ごとの画像の並べ順', () => {
+test('作品ごとの画像の並べ順と種類の絞り込み', () => {
   // listSeriesImages と同じく新しい号から順
   const images = [
     { year: 2026, folder: '50', file: 'a', kind: 'center' },
     { year: 2026, folder: '50', file: 'b', kind: 'center' },
     { year: 2026, folder: '04-05', file: 'c', kind: 'opening' },
     { year: 2025, folder: '30', file: 'd', kind: 'spread' },
-    { year: 2025, folder: '10', file: 'e', kind: 'center' }
+    { year: 2025, folder: '10', file: 'e', kind: 'cover' }
   ]
 
   const files = (list) => list.map((image) => image.file)
@@ -791,17 +793,91 @@ test('作品ごとの画像の並べ順', () => {
     files(arrangeSeriesImages(images, 'old')),
     ['e', 'd', 'c', 'a', 'b']
   )
-  // 以前の「見開き」も巻頭カラーとして先に並ぶ
+  // 以前の「見開き」も巻頭カラーとして絞り込む
   assert.deepEqual(
-    files(arrangeSeriesImages(images, 'opening')),
-    ['c', 'd', 'a', 'b', 'e']
+    files(arrangeSeriesImages(images, 'old', 'opening')),
+    ['d', 'c']
   )
   assert.deepEqual(
-    files(arrangeSeriesImages(images, 'center')),
-    ['a', 'b', 'e', 'c', 'd']
+    files(arrangeSeriesImages(images, 'new', 'center')),
+    ['a', 'b']
   )
   assert.deepEqual(
-    files(arrangeSeriesImages(images, 'xxx')),
+    files(arrangeSeriesImages(images, 'new', 'cover')),
+    ['e']
+  )
+  assert.deepEqual(
+    files(arrangeSeriesImages(images, 'xxx', 'xxx')),
     ['a', 'b', 'c', 'd', 'e']
+  )
+})
+
+test('見開きの各ページは一覧で見開きにまとめる', () => {
+  let index =
+    normalizeYearIndex(
+      {
+        issues: {
+          '50': {
+            images: [
+              image(1, 'cover'),
+              image(2, 'opening'),
+              { ...image(3, 'opening'), pageOf: '02-opening.jpg' },
+              { ...image(4, 'opening'), pageOf: '02-opening.jpg' },
+              { ...image(5, 'center'), pageOf: '../x.jpg' },
+              { ...image(6, 'center'), pageOf: '06-center.jpg' }
+            ]
+          }
+        }
+      },
+      'jump',
+      2026
+    )
+
+  const files = (list) => list.map((item) => item.file)
+
+  // 壊れた対応（自分自身や不正な名前）は無視する
+  assert.deepEqual(
+    index.issues['50'].images.map((item) => item.pageOf),
+    ['', '', '02-opening.jpg', '02-opening.jpg', '', '']
+  )
+
+  assert.deepEqual(
+    files(hideSpreadPages(index.issues['50'].images)),
+    ['01-cover.jpg', '02-opening.jpg', '05-center.jpg', '06-center.jpg']
+  )
+
+  // 見開きを消すと、ページは一覧に出る
+  index =
+    removeImageFromIssue(index, '50', '02-opening.jpg', NOW)
+
+  assert.deepEqual(
+    files(hideSpreadPages(index.issues['50'].images)),
+    ['01-cover.jpg', '03-opening.jpg', '04-opening.jpg', '05-center.jpg', '06-center.jpg']
+  )
+
+  // 号をまたいだ一覧（作品ごと）でも、同じ号の見開きにだけまとめる
+  assert.deepEqual(
+    files(
+      hideSpreadPages([
+        { year: 2026, folder: '50', file: 's.jpg' },
+        { year: 2026, folder: '50', file: 'p.jpg', pageOf: 's.jpg' },
+        { year: 2026, folder: '49', file: 'q.jpg', pageOf: 's.jpg' }
+      ])
+    ),
+    ['s.jpg', 'q.jpg']
+  )
+
+  // あとから対応を付け直す
+  index =
+    setSpreadPagesInIssue(
+      index,
+      '50',
+      new Map([['06-center.jpg', '05-center.jpg']]),
+      NOW
+    )
+
+  assert.deepEqual(
+    index.issues['50'].images.map((item) => item.pageOf),
+    ['', '', '', '', '05-center.jpg']
   )
 })

@@ -31,6 +31,7 @@ import {
   getKindLabel,
   groupColorPieces,
   isSpreadSize,
+  hideSpreadPages,
   matchSpreadPages,
   moveImageInIssue,
   normalizeKind,
@@ -281,6 +282,13 @@ function ColorIssuePage({
   const images =
     state.index?.issues[folder]?.images ||
     []
+
+  // 見開きと、それを1ページずつ撮った画像は、一覧では見開きだけを出す
+  // （全画面では3枚とも見られる）。編集中はすべて出す。
+  const gridImages =
+    isEditing
+      ? images
+      : hideSpreadPages(images)
 
   const canChange =
     state.status === 'ready' &&
@@ -560,11 +568,25 @@ function ColorIssuePage({
         slug,
         year,
         folder,
-        items: items.map((item) => ({
-          ...item.prepared,
-          kind: item.kind,
-          series: item.series
-        }))
+        items: items.map((item) => {
+          const spreadPosition =
+            item.spreadId
+              ? items.findIndex(
+                  (other) =>
+                    other.id === item.spreadId
+                )
+              : -1
+
+          return {
+            ...item.prepared,
+            kind: item.kind,
+            series: item.series,
+            pageOf:
+              spreadPosition >= 0
+                ? spreadPosition
+                : null
+          }
+        })
       })
 
       clearPending()
@@ -1073,7 +1095,11 @@ function ColorIssuePage({
             )}
 
           <div className="color-image-grid">
-            {images.map((image, position) => (
+            {gridImages.map((image) => {
+              const position =
+                images.indexOf(image)
+
+              return (
               <div
                 key={image.file}
                 className={
@@ -1233,7 +1259,8 @@ function ColorIssuePage({
                   </div>
                 )}
               </div>
-            ))}
+            )
+            })}
           </div>
         </div>
       )}

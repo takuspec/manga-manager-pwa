@@ -602,7 +602,14 @@ function normalizeImage(image) {
     height: Number(image.height) || 0,
     bytes: Number(image.bytes) || 0,
     addedAt: String(image.addedAt || ''),
-    series: normalizeSeriesTags(image.series)
+    series: normalizeSeriesTags(image.series),
+    // 見開きの各ページとして撮った縦の画像なら、その見開きのファイル名
+    pageOf:
+      /^[A-Za-z0-9._-]+\.jpg$/.test(
+        String(image.pageOf || '')
+      ) && image.pageOf !== file
+        ? String(image.pageOf)
+        : ''
   }
 }
 
@@ -1140,52 +1147,93 @@ export function listSeriesImages(
   return images
 }
 
-// 作品ごとの画像の並べ順
+// 作品ごとの画像の並べ順と、種類での絞り込み
 export const SERIES_IMAGE_SORTS = [
   { id: 'new', label: '新しい順' },
-  { id: 'old', label: '古い順' },
-  { id: 'opening', label: '巻頭カラーが先' },
-  { id: 'center', label: 'センターカラーが先' }
+  { id: 'old', label: '古い順' }
 ]
 
-// listSeriesImages の結果（新しい号から順）を並べ替える。
+export const SERIES_IMAGE_KINDS = [
+  { id: 'all', label: 'すべて' },
+  { id: 'cover', label: '表紙' },
+  { id: 'opening', label: '巻頭カラー' },
+  { id: 'center', label: 'センターカラー' }
+]
+
+// listSeriesImages の結果（新しい号から順）を絞り込み、並べ替える。
 // 同じ号の中は、号の画面と同じ順のまま。
-// 巻頭・センターが先の並びでは、その種類を先に、それぞれ新しい号から並べる。
 export function arrangeSeriesImages(
   images,
-  sort = 'new'
+  sort = 'new',
+  kind = 'all'
 ) {
   const withOrder =
-    images.map((image, order) => ({
-      image,
-      order,
-      serial:
-        image.year * 100 +
-        (parseIssueFolder(image.folder)?.start ||
-          0)
-    }))
+    images
+      .map((image, order) => ({
+        image,
+        order,
+        serial:
+          image.year * 100 +
+          (parseIssueFolder(image.folder)
+            ?.start || 0)
+      }))
+      .filter(
+        (entry) =>
+          kind === 'all' ||
+          !SERIES_IMAGE_KINDS.some(
+            (item) => item.id === kind
+          ) ||
+          normalizeKind(entry.image.kind) === kind
+      )
 
   if (sort === 'old') {
     withOrder.sort(
       (a, b) =>
         a.serial - b.serial || a.order - b.order
     )
-  } else if (
-    sort === 'opening' ||
-    sort === 'center'
-  ) {
-    const rank = (entry) =>
-      normalizeKind(entry.image.kind) === sort
-        ? 0
-        : 1
-
-    withOrder.sort(
-      (a, b) =>
-        rank(a) - rank(b) || a.order - b.order
-    )
   }
 
   return withOrder.map((entry) => entry.image)
+}
+
+// 一覧では、見開きの各ページは見開きにまとめて表示しない（全画面ではめくれる）。
+// 見開きが同じ一覧にないページ（見開きを消した場合など）は表示する。
+export function hideSpreadPages(images) {
+  const present =
+    new Set(
+      images.map(
+        (image) =>
+          `${image.year ?? ''}/${image.folder ?? ''}/${image.file}`
+      )
+    )
+
+  return images.filter(
+    (image) =>
+      !image.pageOf ||
+      !present.has(
+        `${image.year ?? ''}/${image.folder ?? ''}/${image.pageOf}`
+      )
+  )
+}
+
+// 号の画像に、見開きのページの対応を記録する。pages: Map（ページ → 見開き）
+export function setSpreadPagesInIssue(
+  index,
+  folder,
+  pages,
+  now = new Date().toISOString()
+) {
+  return updateIssue(
+    index,
+    folder,
+    (current) => {
+      return current.map((image) => ({
+        ...image,
+        pageOf: pages.get(image.file) || ''
+      }))
+    },
+    now
+  )
 }
 
 export function listIssues(index) {

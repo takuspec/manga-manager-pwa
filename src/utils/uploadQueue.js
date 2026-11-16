@@ -204,8 +204,18 @@ export function createUploadQueue({
           finished[key] = (finished[key] || 0) + 1
           await safely(() => storage.remove(batch.id))
         } else {
-          // 送れた分は登録済み。残りだけを失敗として残す
-          batch.items = batch.items.slice(sent)
+          // 送れた分は登録済み。残りだけを失敗として残す。
+          // 見開きのページの対応は、残りの中での位置に付け直す
+          // （見開きが送信済みなら、対応はあきらめる）。
+          batch.items =
+            batch.items.slice(sent).map((item) => ({
+              ...item,
+              pageOf:
+                Number.isInteger(item.pageOf) &&
+                item.pageOf >= sent
+                  ? item.pageOf - sent
+                  : null
+            }))
           batch.status = 'error'
           batch.error = errorMessage(failure)
           batch.temporary = isTemporary(failure)
@@ -247,7 +257,7 @@ export function createUploadQueue({
       return snapshot
     },
 
-    // items: { full, thumb, width, height, kind, series }
+    // items: { full, thumb, width, height, kind, series, pageOf（見開きの位置） }
     async enqueue({ slug, year, folder, items }) {
       const batch = {
         id: `${now()}-${Math.random()
@@ -262,7 +272,10 @@ export function createUploadQueue({
           width: item.width,
           height: item.height,
           kind: item.kind,
-          series: item.series || []
+          series: item.series || [],
+          pageOf: Number.isInteger(item.pageOf)
+            ? item.pageOf
+            : null
         })),
         createdAt: now(),
         status: 'waiting',

@@ -89,7 +89,8 @@ function ViewerStage({
   folder,
   image,
   viewport,
-  onSwipe
+  onSwipe,
+  onTap
 }) {
   const [attempt, setAttempt] =
     useState(0)
@@ -128,6 +129,14 @@ function ViewerStage({
   const viewRef = useRef(view)
   const pointersRef = useRef(new Map())
   const gestureRef = useRef(null)
+  // 1回タップ（表示の切り替え）。ダブルタップと区別するため少し待つ
+  const tapRef = useRef(null)
+  const tapTimerRef = useRef(0)
+
+  useEffect(() => {
+    return () => clearTimeout(tapTimerRef.current)
+  }, [])
+
   const lastTapRef =
     useRef({
       time: 0,
@@ -236,6 +245,8 @@ function ViewerStage({
       }
     )
 
+    clearTimeout(tapTimerRef.current)
+
     if (pointersRef.current.size === 1) {
       const now = Date.now()
       const last = lastTapRef.current
@@ -252,6 +263,14 @@ function ViewerStage({
         x: event.clientX,
         y: event.clientY
       }
+
+      tapRef.current = isDoubleTap
+        ? null
+        : {
+            time: now,
+            x: event.clientX,
+            y: event.clientY
+          }
 
       if (isDoubleTap) {
         const current = viewRef.current
@@ -288,6 +307,8 @@ function ViewerStage({
           })
         }
       }
+    } else {
+      tapRef.current = null
     }
 
     startGesture()
@@ -391,6 +412,27 @@ function ViewerStage({
     pointersRef.current.delete(
       event.pointerId
     )
+
+    const tap = tapRef.current
+
+    if (
+      event.type === 'pointerup' &&
+      tap &&
+      pointersRef.current.size === 0 &&
+      Date.now() - tap.time < DOUBLE_TAP_MS &&
+      Math.hypot(
+        event.clientX - tap.x,
+        event.clientY - tap.y
+      ) < 10
+    ) {
+      tapRef.current = null
+      tapTimerRef.current = setTimeout(
+        () => onTap?.(),
+        DOUBLE_TAP_MS
+      )
+    } else if (pointersRef.current.size === 0) {
+      tapRef.current = null
+    }
 
     // 拡大していないときの横スワイプは、前後の画像へ移動
     if (
@@ -500,6 +542,10 @@ function ColorViewer({
   const [position, setPosition] =
     useState(initialIndex)
 
+  // 画像をタップすると情報表示を消す／出す。移動しても状態はそのまま
+  const [infoVisible, setInfoVisible] =
+    useState(true)
+
   const [viewport, setViewport] =
     useState(getViewport)
 
@@ -587,15 +633,20 @@ function ColorViewer({
         image={image}
         viewport={viewport}
         onSwipe={move}
+        onTap={() =>
+          setInfoVisible((current) => !current)
+        }
       />
 
       {/* 年と号・種類・何枚目か */}
-      <div className="color-viewer-info">
-        {imageYear}年{' '}
-        {formatIssueFolder(imageFolder)}・
-        {getKindLabel(normalizeKind(image.kind))}・
-        {index + 1} / {images.length}
-      </div>
+      {infoVisible && (
+        <div className="color-viewer-info">
+          {imageYear}年{' '}
+          {formatIssueFolder(imageFolder)}・
+          {getKindLabel(normalizeKind(image.kind))}・
+          {index + 1} / {images.length}
+        </div>
+      )}
 
       <button
         type="button"
@@ -606,7 +657,7 @@ function ColorViewer({
         ×
       </button>
 
-      {index > 0 && (
+      {infoVisible && index > 0 && (
         <button
           type="button"
           className="color-viewer-nav prev"
@@ -617,7 +668,7 @@ function ColorViewer({
         </button>
       )}
 
-      {index < images.length - 1 && (
+      {infoVisible && index < images.length - 1 && (
         <button
           type="button"
           className="color-viewer-nav next"

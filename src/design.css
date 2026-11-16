@@ -1282,3 +1282,11 @@ button svg { flex-shrink: 0; vertical-align: middle; }
 .color-image-card.spread {
   grid-column: 1 / -1;
 }
+
+/* 作品ごとの画像：左に並べ順、右に種類 */
+.color-series-toolbar {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 12px;
+}

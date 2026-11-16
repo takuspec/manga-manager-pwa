@@ -22,7 +22,9 @@ import {
 import {
   formatIssueFolder,
   SERIES_IMAGE_SORTS,
+  SERIES_IMAGE_KINDS,
   arrangeSeriesImages,
+  hideSpreadPages,
   getKindLabel,
   isSpreadSize,
   normalizeKind,
@@ -50,6 +52,30 @@ function ColorSeriesPage({
       ? searchParams.get('s')
       : 'new'
 
+  const kind =
+    SERIES_IMAGE_KINDS.some(
+      (item) =>
+        item.id === searchParams.get('k')
+    )
+      ? searchParams.get('k')
+      : 'all'
+
+  const updateParams = (next) => {
+    const merged = { s: sort, k: kind, ...next }
+    const query = {}
+
+    if (merged.s !== 'new') {
+      query.s = merged.s
+    }
+
+    if (merged.k !== 'all') {
+      query.k = merged.k
+    }
+
+    setViewerIndex(null)
+    setSearchParams(query, { replace: true })
+  }
+
   const slug = normalizeSlug(params.slug)
 
   const goBack =
@@ -72,8 +98,15 @@ function ColorSeriesPage({
   const [viewerIndex, setViewerIndex] =
     useState(null)
 
+  // ビューアーには見開きのページも含めて渡し、一覧では見開きだけを出す
   const images =
-    arrangeSeriesImages(state.images, sort)
+    arrangeSeriesImages(
+      state.images,
+      sort,
+      kind
+    )
+
+  const gridImages = hideSpreadPages(images)
 
   useEffect(() => {
     if (!slug || !title) {
@@ -238,35 +271,61 @@ function ColorSeriesPage({
           )}
 
           {state.images.length > 1 && (
-            <label className="color-toolbar-field">
-              <span>並べ順</span>
-              <select
-                value={sort}
-                onChange={(event) => {
-                  setViewerIndex(null)
-                  setSearchParams(
-                    event.target.value === 'new'
-                      ? {}
-                      : { s: event.target.value },
-                    { replace: true }
-                  )
-                }}
-              >
-                {SERIES_IMAGE_SORTS.map((item) => (
-                  <option
-                    key={item.id}
-                    value={item.id}
-                  >
-                    {item.label}
-                  </option>
-                ))}
-              </select>
-            </label>
+            <div className="color-series-toolbar">
+              <label className="color-toolbar-field">
+                <span>並べ順</span>
+                <select
+                  value={sort}
+                  onChange={(event) =>
+                    updateParams({
+                      s: event.target.value
+                    })
+                  }
+                >
+                  {SERIES_IMAGE_SORTS.map((item) => (
+                    <option
+                      key={item.id}
+                      value={item.id}
+                    >
+                      {item.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="color-toolbar-field">
+                <span>種類</span>
+                <select
+                  value={kind}
+                  onChange={(event) =>
+                    updateParams({
+                      k: event.target.value
+                    })
+                  }
+                >
+                  {SERIES_IMAGE_KINDS.map((item) => (
+                    <option
+                      key={item.id}
+                      value={item.id}
+                    >
+                      {item.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
           )}
 
+          {state.images.length > 0 &&
+            images.length === 0 && (
+              <div className="empty-message">
+                この種類の画像はありません。
+              </div>
+            )}
+
           <div className="color-image-grid">
-            {images.map(
-              (image, position) => (
+            {gridImages.map(
+              (image) => (
                 <div
                   key={`${image.year}/${image.folder}/${image.file}`}
                   className={
@@ -289,7 +348,9 @@ function ColorSeriesPage({
                       image.folder
                     )} を全画面で表示`}
                     onClick={() =>
-                      setViewerIndex(position)
+                      setViewerIndex(
+                        images.indexOf(image)
+                      )
                     }
                   >
                     <CloudImage
