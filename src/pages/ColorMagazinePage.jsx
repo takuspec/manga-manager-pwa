@@ -705,11 +705,7 @@ function ColorMagazinePage({
                   <button
                     key={group.title}
                     type="button"
-                    className={`card ${
-                      group.status === 'completed'
-                        ? 'completed'
-                        : ''
-                    }`}
+                    className="card"
                     onClick={() =>
                       navigate(
                         `/color/${slug}/series/${encodeURIComponent(
