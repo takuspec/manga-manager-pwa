@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import PrimaryNav from '../components/PrimaryNav'
-import AppIcon from '../components/AppIcon'
+import DataActionMenu from '../components/DataActionMenu'
 import cloudClient from '../utils/cloudClient'
 import {
   loadRootIndex,
@@ -15,6 +15,8 @@ import {
 
 function ColorIndexPage({
   magazineList,
+  onBackupData,
+  onImportData,
   navigate
 }) {
   const [configured] =
@@ -175,16 +177,14 @@ function ColorIndexPage({
           カラーページ
         </div>
 
-        <button
-          type="button"
-          className="page-settings-button"
-          aria-label="クラウド設定"
-          onClick={() =>
+        {/* ほかの画面と同じ右上のメニュー */}
+        <DataActionMenu
+          onBackupData={onBackupData}
+          onImportData={onImportData}
+          onCloudSettings={() =>
             navigate('/cloud-settings')
           }
-        >
-          <AppIcon name="settings" />
-        </button>
+        />
       </div>
 
       {!configured && (

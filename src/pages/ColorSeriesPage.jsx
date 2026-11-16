@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react'
-import {
-  useLocation,
-  useParams
-} from 'react-router-dom'
+import { useParams } from 'react-router-dom'
 import CloudImage from '../components/CloudImage'
-import { useScrollTopOnOpen } from '../hooks/useScrollHeader'
+import {
+  useGoBack,
+  useScrollTopOnOpen
+} from '../hooks/useScrollHeader'
 import ColorViewer from '../components/ColorViewer'
 import {
   loadRootIndex,
@@ -26,15 +26,20 @@ import {
 // 1つの作品のタグが付いたカラーページを、新しい号から順に並べる
 function ColorSeriesPage({
   magazineList,
-  seriesList,
-  navigate
+  seriesList
 }) {
   const params = useParams()
-  const location = useLocation()
 
   useScrollTopOnOpen()
 
   const slug = normalizeSlug(params.slug)
+
+  const goBack =
+    useGoBack(
+      slug
+        ? `/color/${slug}?v=series`
+        : '/color'
+    )
   const title =
     String(params.title || '').trim()
 
@@ -138,19 +143,7 @@ function ColorSeriesPage({
       <div className="series-page-header">
         <button
           className="back-button"
-          onClick={() => {
-            // 一覧から来たときは、絞り込みや並べ順を保ったまま戻る
-            if (location.key !== 'default') {
-              navigate(-1)
-              return
-            }
-
-            navigate(
-              slug
-                ? `/color/${slug}?v=series`
-                : '/color'
-            )
-          }}
+          onClick={goBack}
         >
           ← 戻る
         </button>

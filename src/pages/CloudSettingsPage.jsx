@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useGoBack } from '../hooks/useScrollHeader'
 import cloudClient, {
   RETRY_POLICY,
   SAFETY
@@ -189,7 +190,9 @@ function UsagePanel({ usage }) {
   )
 }
 
-function CloudSettingsPage({ navigate }) {
+function CloudSettingsPage() {
+  const goBack = useGoBack('/')
+
   const [config, setConfig] =
     useState(() =>
       cloudClient.loadConfig()
@@ -292,7 +295,7 @@ function CloudSettingsPage({ navigate }) {
       <div className="series-page-header">
         <button
           className="back-button"
-          onClick={() => navigate('/')}
+          onClick={goBack}
         >
           ← 戻る
         </button>

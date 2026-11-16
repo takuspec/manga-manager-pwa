@@ -109,6 +109,7 @@ function TimelinePage({
     Number(selectedMagazineId)
 
   const timelineHeaderRef = useRef(null)
+  const yearNavRef = useRef(null)
   const yearSectionRefs = useRef(new Map())
   const [jumpYear, setJumpYear] = useState(null)
 
@@ -314,6 +315,20 @@ function TimelinePage({
       window.removeEventListener('resize', scheduleUpdate)
     }
   }, [selectedMagazineId, timelineViewMode, timelineYearKey])
+
+  // 今見ている年のボタンが、年の並びの中央に来るよう横にスクロールする
+  useEffect(() => {
+    const nav = yearNavRef.current
+    const button = nav?.querySelector('button[aria-pressed="true"]')
+    if (!nav || !button) return
+    const navRect = nav.getBoundingClientRect()
+    const buttonRect = button.getBoundingClientRect()
+    const left = nav.scrollLeft + (buttonRect.left - navRect.left) - (navRect.width - buttonRect.width) / 2
+    nav.scrollTo({
+      left: Math.max(0, left),
+      behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth'
+    })
+  }, [activeJumpYear])
 
   const jumpToYear = (year) => {
     const section = yearSectionRefs.current.get(year)
@@ -684,7 +699,7 @@ function TimelinePage({
           {selectedMagazineLabel}
         </div>
         {groupedEvents.length > 0 && (
-          <nav className="timeline-year-nav" aria-label="年を選んで移動">
+          <nav className="timeline-year-nav" aria-label="年を選んで移動" ref={yearNavRef}>
             {groupedEvents.map((group) => (
               <button type="button" key={group.year}
                 aria-pressed={activeJumpYear === group.year}

@@ -1,26 +1,22 @@
 import {
   useEffect,
   useLayoutEffect,
-  useRef,
-  useState
+  useRef
 } from 'react'
+import {
+  useLocation,
+  useNavigate
+} from 'react-router-dom'
 
 // 画面ごとのスクロール位置。戻ったときに元の位置へ戻すために使う。
 const positions = new Map()
 
-// 下へスクロールしたら見出しを隠し、少し上へ戻したら出す。
-// 見出しを隠し始めるのは、ページの先頭から少し下がってから。
-const SHOW_NEAR_TOP_PX = 80
-const DIRECTION_THRESHOLD_PX = 6
-
 // locationKey: 画面の履歴ごとの識別子（react-router の location.key）
 // ready: 中身の表示が終わったか（終わってから位置を戻す）
-export default function useScrollHeader(
+export default function useScrollRestore(
   locationKey,
   ready
 ) {
-  const [hidden, setHidden] = useState(false)
-  const lastYRef = useRef(0)
   const restoredRef = useRef('')
 
   useLayoutEffect(() => {
@@ -32,11 +28,10 @@ export default function useScrollHeader(
     }
 
     restoredRef.current = locationKey
-
-    const saved = positions.get(locationKey) || 0
-
-    window.scrollTo(0, saved)
-    lastYRef.current = saved
+    window.scrollTo(
+      0,
+      positions.get(locationKey) || 0
+    )
   }, [locationKey, ready])
 
   useEffect(() => {
@@ -50,25 +45,11 @@ export default function useScrollHeader(
       frame = requestAnimationFrame(() => {
         frame = 0
 
-        const y = Math.max(0, window.scrollY)
-        const dy = y - lastYRef.current
-
         if (restoredRef.current === locationKey) {
-          positions.set(locationKey, y)
-        }
-
-        if (y < SHOW_NEAR_TOP_PX) {
-          setHidden(false)
-          lastYRef.current = y
-          return
-        }
-
-        if (dy > DIRECTION_THRESHOLD_PX) {
-          setHidden(true)
-          lastYRef.current = y
-        } else if (dy < -DIRECTION_THRESHOLD_PX) {
-          setHidden(false)
-          lastYRef.current = y
+          positions.set(
+            locationKey,
+            Math.max(0, window.scrollY)
+          )
         }
       })
     }
@@ -85,8 +66,6 @@ export default function useScrollHeader(
       cancelAnimationFrame(frame)
     }
   }, [locationKey])
-
-  return hidden
 }
 
 // 開いたときにページの先頭から表示する（前の画面のスクロール位置を引き継がない）
@@ -94,4 +73,23 @@ export function useScrollTopOnOpen() {
   useLayoutEffect(() => {
     window.scrollTo(0, 0)
   }, [])
+}
+
+// 「戻る」ボタン用。アプリの中から来たときは、来た画面へそのまま戻る
+// （どの画面から開いても、元の画面とスクロール位置に戻れるように）。
+// 直接開いたときなど、戻る先がなければ fallback へ移る。
+export function useGoBack(fallback) {
+  const navigate = useNavigate()
+  const location = useLocation()
+
+  return () => {
+    if (location.key !== 'default') {
+      navigate(-1)
+      return
+    }
+
+    navigate(fallback, {
+      replace: true
+    })
+  }
 }

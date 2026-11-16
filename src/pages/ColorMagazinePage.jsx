@@ -8,7 +8,10 @@ import {
   useParams,
   useSearchParams
 } from 'react-router-dom'
-import useScrollHeader from '../hooks/useScrollHeader'
+import useScrollRestore, {
+  useGoBack
+} from '../hooks/useScrollHeader'
+import AppIcon from '../components/AppIcon'
 import CloudImage from '../components/CloudImage'
 import ImageView from '../components/ImageView'
 import CropSettings from '../components/CropSettings'
@@ -91,6 +94,7 @@ function ColorMagazinePage({
       : 'new'
 
   const location = useLocation()
+  const goBack = useGoBack('/color')
 
   const loadKey =
     `${slug}:${requestedYear}:${view}`
@@ -267,12 +271,15 @@ function ColorMagazinePage({
     state.status === 'ready' &&
     state.key !== loadKey
 
-  const headerHidden =
-    useScrollHeader(
-      location.key,
-      state.status !== 'loading' &&
-        !isSwitching
-    )
+  useScrollRestore(
+    location.key,
+    state.status !== 'loading' &&
+      !isSwitching
+  )
+
+  // 右上のメニュー（切り落としの設定、名前とフォルダ名）
+  const [isMenuOpen, setIsMenuOpen] =
+    useState(false)
 
   const yearOptions =
     state.magazine
@@ -400,17 +407,11 @@ function ColorMagazinePage({
 
   return (
     <div className="app">
-      <div
-        className={
-          headerHidden
-            ? 'color-sticky-header hidden'
-            : 'color-sticky-header'
-        }
-      >
+      <div className="color-sticky-header">
         <div className="series-page-header">
           <button
             className="back-button"
-            onClick={() => navigate('/color')}
+            onClick={goBack}
           >
             ← 戻る
           </button>
@@ -420,7 +421,21 @@ function ColorMagazinePage({
               'カラーページ'}
           </div>
 
-          <div />
+          {state.status === 'ready' &&
+          !state.fromCache ? (
+            <button
+              type="button"
+              className="page-settings-button color-header-menu-button"
+              aria-label="雑誌の設定"
+              onClick={() =>
+                setIsMenuOpen(true)
+              }
+            >
+              <AppIcon name="settings" />
+            </button>
+          ) : (
+            <div />
+          )}
         </div>
 
         {state.status === 'ready' && (
@@ -460,6 +475,28 @@ function ColorMagazinePage({
             </button>
           </div>
         )}
+
+        {state.status === 'ready' &&
+          view === 'issues' && (
+            <label className="color-toolbar-field">
+              <span>年</span>
+              <select
+                value={state.year}
+                onChange={(event) =>
+                  openYear(event.target.value)
+                }
+              >
+                {yearOptions.map((year) => (
+                  <option
+                    key={year}
+                    value={year}
+                  >
+                    {year}年
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
 
         {state.status === 'ready' &&
           view === 'series' && (
@@ -515,67 +552,41 @@ function ColorMagazinePage({
             </div>
           )}
 
-          {view === 'issues' && (
-            <>
-              <div className="color-toolbar">
-                <label className="color-toolbar-field">
-                  <span>年</span>
-                  <select
-                    value={state.year}
+          {/* 号の一覧を作れない雑誌（ジャンプ以外）は、年と号を入力して開く */}
+          {view === 'issues' && !range && (
+            <div className="color-toolbar">
+              <form
+                className="color-toolbar-field"
+                onSubmit={(event) => {
+                  event.preventDefault()
+                  openYear(yearInput)
+                }}
+              >
+                <span>ほかの年</span>
+                <div className="color-inline-form">
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    placeholder="2019"
+                    aria-label="ほかの年"
+                    value={yearInput}
                     onChange={(event) =>
-                      openYear(
+                      setYearInput(
                         event.target.value
                       )
                     }
-                  >
-                    {yearOptions.map(
-                      (year) => (
-                        <option
-                          key={year}
-                          value={year}
-                        >
-                          {year}年
-                        </option>
-                      )
-                    )}
-                  </select>
-                </label>
-
-                <form
-                  className="color-toolbar-field"
-                  onSubmit={(event) => {
-                    event.preventDefault()
-                    openYear(yearInput)
-                  }}
-                >
-                  <span>ほかの年</span>
-                  <div className="color-inline-form">
-                    <input
-                      type="text"
-                      inputMode="numeric"
-                      placeholder="2019"
-                      aria-label="ほかの年"
-                      value={yearInput}
-                      onChange={(event) =>
-                        setYearInput(
-                          event.target.value
-                        )
-                      }
-                    />
-                    <button type="submit">
-                      開く
-                    </button>
-                  </div>
-                </form>
-              </div>
+                  />
+                  <button type="submit">
+                    開く
+                  </button>
+                </div>
+              </form>
 
               <form
                 className="color-toolbar-field"
                 onSubmit={openIssue}
               >
-                <span>
-                  号を開く（新しい号の登録もここから）
-                </span>
+                <span>号を開く</span>
                 <div className="color-inline-form">
                   <input
                     type="text"
@@ -594,47 +605,7 @@ function ColorMagazinePage({
                   </button>
                 </div>
               </form>
-
-              {!state.fromCache && (
-                <CropSettings
-                  key={state.magazine.slug}
-                  magazine={state.magazine}
-                  onSaved={(magazine) => {
-                    if (magazine) {
-                      setState((current) => ({
-                        ...current,
-                        magazine
-                      }))
-                    }
-                  }}
-                />
-              )}
-
-              {!state.fromCache && (
-                <MagazineRename
-                  key={state.magazine.slug}
-                  magazine={state.magazine}
-                  onRenamed={(magazine) => {
-                    if (!magazine) {
-                      return
-                    }
-
-                    if (magazine.slug !== slug) {
-                      navigate(
-                        `/color/${magazine.slug}?y=${state.year}`,
-                        { replace: true }
-                      )
-                      return
-                    }
-
-                    setState((current) => ({
-                      ...current,
-                      magazine
-                    }))
-                  }}
-                />
-              )}
-            </>
+            </div>
           )}
 
           {formError && (
@@ -812,6 +783,70 @@ function ColorMagazinePage({
           )}
         </div>
       )}
+      {isMenuOpen &&
+        state.status === 'ready' && (
+          <div
+            className="series-picker"
+            role="dialog"
+            aria-modal="true"
+            aria-label="雑誌の設定"
+          >
+            <div className="series-picker-panel">
+              <div className="series-picker-header">
+                <span />
+                <strong>雑誌の設定</strong>
+                <button
+                  type="button"
+                  className="cloud-settings-secondary"
+                  onClick={() =>
+                    setIsMenuOpen(false)
+                  }
+                >
+                  閉じる
+                </button>
+              </div>
+
+              <div className="color-menu-body">
+                <CropSettings
+                  key={`crop-${state.magazine.slug}`}
+                  magazine={state.magazine}
+                  onSaved={(magazine) => {
+                    if (magazine) {
+                      setState((current) => ({
+                        ...current,
+                        magazine
+                      }))
+                    }
+                  }}
+                />
+
+                <MagazineRename
+                  key={`rename-${state.magazine.slug}`}
+                  magazine={state.magazine}
+                  onRenamed={(magazine) => {
+                    if (!magazine) {
+                      return
+                    }
+
+                    if (magazine.slug !== slug) {
+                      setIsMenuOpen(false)
+                      navigate(
+                        `/color/${magazine.slug}?y=${state.year}`,
+                        { replace: true }
+                      )
+                      return
+                    }
+
+                    setState((current) => ({
+                      ...current,
+                      magazine
+                    }))
+                  }}
+                />
+              </div>
+            </div>
+          </div>
+        )}
     </div>
   )
 }

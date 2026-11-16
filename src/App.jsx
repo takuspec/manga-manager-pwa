@@ -653,6 +653,8 @@ function App() {
         element={
           <ColorIndexPage
             magazineList={magazineList}
+            onBackupData={backupData}
+            onImportData={importData}
             navigate={navigate}
           />
         }
