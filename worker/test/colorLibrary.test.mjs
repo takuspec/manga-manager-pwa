@@ -27,6 +27,7 @@ import {
   setImageSeriesInIssue,
   suggestKinds,
   getImageLabel,
+  groupColorPieces,
   normalizeKind,
   thumbKey,
   upsertMagazine,
@@ -309,23 +310,16 @@ test('号は番号順に並ぶ。壊れた索引は安全に読み飛ばす', ()
   )
 })
 
-test('種類の初期値: 表紙→巻頭カラー（見開き＋縦2枚）→センターカラー', () => {
-  const portrait = { width: 1872, height: 2732 }
-  const landscape = { width: 2732, height: 1994 }
+test('種類の初期値: 表紙→巻頭カラー（扉＋見開き＋各ページ）→センターカラー', () => {
+  const P = { width: 1872, height: 2732 }
+  const L = { width: 2732, height: 1994 }
 
-  // ジャンプのいつもの7枚: 表紙、巻頭の見開きと各ページ、センターカラー3枚
+  // ジャンプのいつもの並び: 表紙、巻頭の扉・見開き・各ページ、センターカラー3枚
   assert.deepEqual(
-    suggestKinds([
-      portrait,
-      landscape,
-      portrait,
-      portrait,
-      portrait,
-      portrait,
-      portrait
-    ]),
+    suggestKinds([P, P, L, P, P, P, P, P]),
     [
       'cover',
+      'opening',
       'opening',
       'opening',
       'opening',
@@ -337,17 +331,10 @@ test('種類の初期値: 表紙→巻頭カラー（見開き＋縦2枚）→�
 
   // センターカラーが見開きのときも、見開きと各ページはセンターカラー
   assert.deepEqual(
-    suggestKinds([
-      portrait,
-      landscape,
-      portrait,
-      portrait,
-      landscape,
-      portrait,
-      portrait
-    ]),
+    suggestKinds([P, P, L, P, P, L, P, P]),
     [
       'cover',
+      'opening',
       'opening',
       'opening',
       'opening',
@@ -359,19 +346,57 @@ test('種類の初期値: 表紙→巻頭カラー（見開き＋縦2枚）→�
 
   // 表紙と巻頭カラーがすでにある号に足すときは、すべてセンターカラー
   assert.deepEqual(
-    suggestKinds([portrait, landscape], {
+    suggestKinds([P, L, P], {
       hasCover: true,
       hasOpening: true
     }),
-    ['center', 'center']
+    ['center', 'center', 'center']
   )
 
-  // 表紙だけある号では、最初の見開きから巻頭カラー
+  // 表紙だけある号では、扉から見開きの各ページまでが巻頭カラー
   assert.deepEqual(
-    suggestKinds([landscape, portrait, portrait, portrait], {
+    suggestKinds([P, L, P, P, P], {
       hasCover: true
     }),
-    ['opening', 'opening', 'opening', 'center']
+    ['opening', 'opening', 'opening', 'opening', 'center']
+  )
+
+  // 見開きがなければ巻頭カラーは決めない
+  assert.deepEqual(
+    suggestKinds([P, P, P]),
+    ['cover', 'center', 'center']
+  )
+})
+
+test('同じ作品としてまとまる画像の組', () => {
+  const P = { width: 1872, height: 2732 }
+  const L = { width: 2732, height: 1994 }
+
+  const items = [
+    { ...P, kind: 'cover' },
+    { ...P, kind: 'opening' },
+    { ...L, kind: 'opening' },
+    { ...P, kind: 'opening' },
+    { ...P, kind: 'opening' },
+    { ...P, kind: 'center' },
+    { ...L, kind: 'center' },
+    { ...P, kind: 'center' },
+    { ...P, kind: 'center' },
+    { ...P, kind: 'center' }
+  ]
+
+  assert.deepEqual(
+    groupColorPieces(items),
+    [0, 1, 1, 1, 1, 2, 3, 3, 3, 4]
+  )
+
+  // 以前の「見開き」も巻頭カラーとして扱う
+  assert.deepEqual(
+    groupColorPieces([
+      { ...L, kind: 'spread' },
+      { ...P, kind: 'opening' }
+    ]),
+    [0, 0]
   )
 })
 

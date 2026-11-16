@@ -29,6 +29,7 @@ import {
   formatIssueFolder,
   getImageLabel,
   getKindLabel,
+  groupColorPieces,
   isSpreadSize,
   moveImageInIssue,
   normalizeSlug,
@@ -356,6 +357,71 @@ function ColorIssuePage({
     })
   }
 
+  // 登録前の並び替え。選んだ順が撮った順と違うときに直す
+  const movePendingItem = (id, delta) => {
+    const from =
+      pending.items.findIndex(
+        (item) => item.id === id
+      )
+
+    const to = from + delta
+
+    if (
+      from < 0 ||
+      to < 0 ||
+      to >= pending.items.length
+    ) {
+      return
+    }
+
+    const move = (list) => {
+      const next = [...list]
+      const [moved] = next.splice(from, 1)
+
+      next.splice(to, 0, moved)
+      return next
+    }
+
+    // 切り落としをやり直すときに順番がずれないよう、元のファイルも同じく並べ替える
+    pendingFilesRef.current =
+      move(pendingFilesRef.current)
+
+    setPending({
+      ...pending,
+      items: move(pending.items)
+    })
+  }
+
+  // 今の並び順で、種類を付け直す
+  const resuggestPendingKinds = () => {
+    const kinds =
+      suggestKinds(
+        pending.items.map(
+          (item) => item.prepared
+        ),
+        {
+          hasCover: images.some(
+            (image) =>
+              image.kind === 'cover'
+          ),
+          hasOpening: images.some(
+            (image) =>
+              image.kind === 'opening'
+          )
+        }
+      )
+
+    setPending({
+      ...pending,
+      items: pending.items.map(
+        (item, position) => ({
+          ...item,
+          kind: kinds[position]
+        })
+      )
+    })
+  }
+
   const removePendingItem = (id) => {
     const position =
       pending.items.findIndex(
@@ -537,8 +603,49 @@ function ColorIssuePage({
     setTagTarget(null)
 
     if (target.type === 'pending') {
-      updatePendingItem(target.id, {
-        series
+      // 同じ組（巻頭カラーの4枚、センターカラーの見開きと各ページ）で、
+      // まだタグが同じ（たいていは空）のものにも同じタグを付ける
+      setPending((current) => {
+        if (!current) {
+          return current
+        }
+
+        const groups =
+          groupColorPieces(
+            current.items.map((item) => ({
+              ...item.prepared,
+              kind: item.kind
+            }))
+          )
+
+        const position =
+          current.items.findIndex(
+            (item) => item.id === target.id
+          )
+
+        if (position < 0) {
+          return current
+        }
+
+        const before =
+          current.items[position].series.join('\n')
+
+        return {
+          ...current,
+          items: current.items.map(
+            (item, index) =>
+              index === position ||
+              (groups[index] ===
+                groups[position] &&
+                item.series.join('\n') ===
+                  before)
+                ? {
+                    ...item,
+                    series
+                  }
+                : item
+          )
+        }
       })
       return
     }
@@ -673,8 +780,21 @@ function ColorIssuePage({
                 上部のバーと余白を切り落とす
               </label>
 
+              <p className="cloud-settings-note">
+                種類は撮った順に自動で付けています。巻頭カラーとセンターカラーの見開きは、同じ組の画像にまとめて作品タグが付きます。
+              </p>
+
+              <button
+                type="button"
+                className="cloud-settings-secondary"
+                disabled={Boolean(busy)}
+                onClick={resuggestPendingKinds}
+              >
+                今の並び順で種類を付け直す
+              </button>
+
               <div className="color-pending-list">
-                {pending.items.map((item) => (
+                {pending.items.map((item, position) => (
                   <div
                     key={item.id}
                     className="color-pending-item"
@@ -743,6 +863,43 @@ function ColorIssuePage({
                             : '（自動判定で切り落とし）'
                           : ''}
                       </small>
+
+                      <div className="color-edit-row">
+                        <button
+                          type="button"
+                          aria-label="前へ移動"
+                          disabled={
+                            Boolean(busy) ||
+                            position === 0
+                          }
+                          onClick={() =>
+                            movePendingItem(
+                              item.id,
+                              -1
+                            )
+                          }
+                        >
+                          ↑
+                        </button>
+
+                        <button
+                          type="button"
+                          aria-label="後ろへ移動"
+                          disabled={
+                            Boolean(busy) ||
+                            position ===
+                              pending.items.length - 1
+                          }
+                          onClick={() =>
+                            movePendingItem(
+                              item.id,
+                              1
+                            )
+                          }
+                        >
+                          ↓
+                        </button>
+                      </div>
 
                       <button
                         type="button"

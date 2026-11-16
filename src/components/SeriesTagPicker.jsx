@@ -21,6 +21,11 @@ function SeriesTagPicker({
 
   const [query, setQuery] = useState('')
 
+  // この号に載っている作品が分かるときは、それだけを出す。
+  // ほかの作品は、ボタンを押したときだけ出す。
+  const [showAll, setShowAll] =
+    useState(featured.length === 0)
+
   const keyword = query.trim()
 
   const featuredSet = new Set(featured)
@@ -33,18 +38,23 @@ function SeriesTagPicker({
   const showFeatured =
     !keyword && featured.length > 0
 
+  const searchable =
+    showAll ? allChoices : featured
+
   const matches =
     keyword
-      ? allChoices.filter((title) =>
+      ? searchable.filter((title) =>
           title
             .toLowerCase()
             .includes(keyword.toLowerCase())
         )
-      : showFeatured
-        ? choices.filter(
-            (title) => !featuredSet.has(title)
-          )
-        : choices
+      : !showAll
+        ? []
+        : showFeatured
+          ? choices.filter(
+              (title) => !featuredSet.has(title)
+            )
+          : choices
 
   const visible =
     matches.slice(0, MAX_VISIBLE_CHOICES)
@@ -158,13 +168,25 @@ function SeriesTagPicker({
                 {featured.length}）
               </h3>
               {featured.map(renderItem)}
-              <h3 className="series-picker-heading">
-                ほかの作品
-              </h3>
+              {showAll && (
+                <h3 className="series-picker-heading">
+                  ほかの作品
+                </h3>
+              )}
             </>
           )}
 
           {visible.map(renderItem)}
+
+          {!showAll && (
+            <button
+              type="button"
+              className="cloud-settings-secondary"
+              onClick={() => setShowAll(true)}
+            >
+              ほかの作品からも選ぶ
+            </button>
+          )}
 
           {matches.length >
             visible.length && (
@@ -178,7 +200,8 @@ function SeriesTagPicker({
 
           {matches.length === 0 &&
             !canAddTyped &&
-            !showFeatured && (
+            !showFeatured &&
+            showAll && (
               <p className="cloud-settings-note">
                 該当する作品がありません。
               </p>

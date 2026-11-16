@@ -820,11 +820,12 @@ export function setImageSeriesInIssue(
 
 // まとめて取り込むときの種類の初期値。撮った順に、
 // 1. 最初の縦長を表紙（その号にまだ表紙がなければ）
-// 2. 最初の見開きと、そのあとの縦長2枚（見開きの各ページ）を巻頭カラー
-//    （その号にまだ巻頭カラーがなければ）
+// 2. 表紙のあと最初の見開きまで（扉の縦1枚＋見開き）と、
+//    見開きのあとの縦2枚（見開きの各ページ）を巻頭カラー
+//    （その号にまだ巻頭カラーがなければ）。ジャンプなら4枚。
 // 3. それ以外をセンターカラー
 // とする。登録前に画面で直せる。
-const OPENING_PAGES = 2
+const SPREAD_PAGES = 2
 
 export function suggestKinds(
   sizes,
@@ -833,34 +834,100 @@ export function suggestKinds(
     hasOpening = false
   } = {}
 ) {
-  let coverAssigned = hasCover
-  let openingAssigned = hasOpening
-  let openingPagesLeft = 0
+  const kinds = sizes.map(() => 'center')
 
-  return sizes.map((size) => {
-    if (isSpreadSize(size)) {
-      if (!openingAssigned) {
-        openingAssigned = true
-        openingPagesLeft = OPENING_PAGES
-        return 'opening'
+  let coverIndex = -1
+
+  if (!hasCover) {
+    coverIndex =
+      sizes.findIndex(
+        (size) => !isSpreadSize(size)
+      )
+
+    if (coverIndex >= 0) {
+      kinds[coverIndex] = 'cover'
+    }
+  }
+
+  if (!hasOpening) {
+    const spreadIndex =
+      sizes.findIndex(
+        (size, index) =>
+          index > coverIndex &&
+          isSpreadSize(size)
+      )
+
+    if (spreadIndex >= 0) {
+      for (
+        let index = coverIndex + 1;
+        index <= spreadIndex;
+        index += 1
+      ) {
+        kinds[index] = 'opening'
       }
 
-      openingPagesLeft = 0
-      return 'center'
+      let pagesLeft = SPREAD_PAGES
+
+      for (
+        let index = spreadIndex + 1;
+        index < sizes.length && pagesLeft > 0;
+        index += 1
+      ) {
+        if (isSpreadSize(sizes[index])) {
+          break
+        }
+
+        kinds[index] = 'opening'
+        pagesLeft -= 1
+      }
+    }
+  }
+
+  return kinds
+}
+
+// 同じ作品のカラーとしてまとまる画像の組。並び順と種類から決める。
+// ・続いている巻頭カラーは1組
+// ・センターカラーの見開きと、そのあとの縦2枚（各ページ）は1組
+// ・それ以外は1枚ずつ
+// 返り値は、画像ごとの組の番号。
+export function groupColorPieces(items) {
+  const groups = []
+
+  let group = -1
+  let previousKind = ''
+  let pagesLeft = 0
+
+  for (const item of items) {
+    const kind = normalizeKind(item.kind)
+    const spread = isSpreadSize(item)
+
+    if (
+      kind === 'opening' &&
+      previousKind === 'opening'
+    ) {
+      groups.push(group)
+    } else if (
+      kind === 'center' &&
+      previousKind === 'center' &&
+      !spread &&
+      pagesLeft > 0
+    ) {
+      groups.push(group)
+      pagesLeft -= 1
+    } else {
+      group += 1
+      groups.push(group)
+      pagesLeft =
+        kind === 'center' && spread
+          ? SPREAD_PAGES
+          : 0
     }
 
-    if (!coverAssigned) {
-      coverAssigned = true
-      return 'cover'
-    }
+    previousKind = kind
+  }
 
-    if (openingPagesLeft > 0) {
-      openingPagesLeft -= 1
-      return 'opening'
-    }
-
-    return 'center'
-  })
+  return groups
 }
 
 // 複数の年の索引を、新しい号から順にたどる
