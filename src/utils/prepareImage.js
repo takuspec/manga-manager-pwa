@@ -8,7 +8,10 @@
 //   （判定は trimBox.js）。
 
 import findContentBox from './trimBox.js'
-import { pickCropBox } from './colorLibrary.js'
+import {
+  isSpreadSize,
+  pickCropBox
+} from './colorLibrary.js'
 
 const FULL_JPEG_QUALITY = 0.9
 // 一覧の1枠は最大で幅190×高さ253（CSS px）。iPhone は1px を3倍の細かさで
@@ -191,6 +194,110 @@ function detectContentBox(source) {
   }
 }
 
+// 見開きとその各ページを見分けるための署名（縮めた画像の明るさの並び）。
+// 12×18 に縮める。いきなり縮めると細部を拾ってしまうので、2段階で縮める。
+const SIGNATURE_WIDTH = 12
+const SIGNATURE_HEIGHT = 18
+const SIGNATURE_STEP = 8
+
+function grayscaleSignature(source, box) {
+  const middle =
+    document.createElement('canvas')
+
+  middle.width =
+    SIGNATURE_WIDTH * SIGNATURE_STEP
+  middle.height =
+    SIGNATURE_HEIGHT * SIGNATURE_STEP
+
+  const middleCtx = middle.getContext('2d')
+
+  const small =
+    document.createElement('canvas')
+
+  small.width = SIGNATURE_WIDTH
+  small.height = SIGNATURE_HEIGHT
+
+  const smallCtx =
+    small.getContext('2d', {
+      willReadFrequently: true
+    })
+
+  if (!middleCtx || !smallCtx) {
+    return null
+  }
+
+  middleCtx.imageSmoothingQuality = 'high'
+  middleCtx.drawImage(
+    source.image,
+    box.x,
+    box.y,
+    box.width,
+    box.height,
+    0,
+    0,
+    middle.width,
+    middle.height
+  )
+
+  smallCtx.imageSmoothingQuality = 'high'
+  smallCtx.drawImage(
+    middle,
+    0,
+    0,
+    SIGNATURE_WIDTH,
+    SIGNATURE_HEIGHT
+  )
+
+  const data =
+    smallCtx.getImageData(
+      0,
+      0,
+      SIGNATURE_WIDTH,
+      SIGNATURE_HEIGHT
+    ).data
+
+  const values = []
+
+  for (let i = 0; i < data.length; i += 4) {
+    values.push(
+      Math.round(
+        data[i] * 0.299 +
+          data[i + 1] * 0.587 +
+          data[i + 2] * 0.114
+      )
+    )
+  }
+
+  return values
+}
+
+function createSignature(source, box) {
+  try {
+    if (isSpreadSize(box)) {
+      const half = box.width / 2
+
+      return {
+        left: grayscaleSignature(source, {
+          ...box,
+          width: half
+        }),
+        right: grayscaleSignature(source, {
+          ...box,
+          x: box.x + half,
+          width: half
+        })
+      }
+    }
+
+    return {
+      page: grayscaleSignature(source, box)
+    }
+  } catch (error) {
+    console.error(error)
+    return null
+  }
+}
+
 function chooseBox(source, trim, crops) {
   if (!trim) {
     return {
@@ -236,6 +343,9 @@ export default async function prepareImage(
     const box =
       chooseBox(source, trim, crops)
 
+    const signature =
+      createSignature(source, box)
+
     const thumb =
       await render(
         source,
@@ -259,7 +369,8 @@ export default async function prepareImage(
         width: source.width,
         height: source.height,
         trimmed: false,
-        trimMode: box.trimMode
+        trimMode: box.trimMode,
+        signature
       }
     }
 
@@ -283,7 +394,8 @@ export default async function prepareImage(
       width: full.width,
       height: full.height,
       trimmed: box.trimmed,
-      trimMode: box.trimMode
+      trimMode: box.trimMode,
+      signature
     }
   } finally {
     source.release()

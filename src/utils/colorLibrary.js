@@ -818,30 +818,144 @@ export function setImageSeriesInIssue(
   )
 }
 
-// まとめて取り込むときの種類の初期値。撮った順に、
-// 1. 最初の縦長を表紙（その号にまだ表紙がなければ）
-// 2. 表紙のあと最初の見開きまで（扉の縦1枚＋見開き）と、
-//    見開きのあとの縦2枚（見開きの各ページ）を巻頭カラー
-//    （その号にまだ巻頭カラーがなければ）。ジャンプなら4枚。
-// 3. それ以外をセンターカラー
-// とする。登録前に画面で直せる。
-const SPREAD_PAGES = 2
+// ---- 見開きと、その各ページの対応 ----
+//
+// 見開きは、見開き1枚に加えて各ページを縦で撮ることがある（撮らないこともある）。
+// 並び順だけでは見分けられないので、画像の中身で判定する。
+// 画像を小さく縮めた明るさの並び（署名）同士の差が小さければ、同じ絵とみなす。
+// 署名は prepareImage.js で作る。縦の画像は page、見開きは left・right を持つ。
 
+// 実際のスクリーンショットで、同じ絵（位置のずれ3%まで）は差15以下、
+// 別の絵は差34以上だったので、その間に置く。
+export const PAGE_MATCH_THRESHOLD = 22
+
+const MAX_PAGES_PER_SPREAD = 2
+
+export function signatureDistance(a, b) {
+  if (
+    !Array.isArray(a) ||
+    !Array.isArray(b) ||
+    a.length === 0 ||
+    a.length !== b.length
+  ) {
+    return Infinity
+  }
+
+  let total = 0
+
+  for (let i = 0; i < a.length; i += 1) {
+    total += Math.abs(a[i] - b[i])
+  }
+
+  return total / a.length
+}
+
+// 縦の画像ごとに、どの見開きのページか（なければ含めない）を返す。
+// items: { id, width, height, signature }
+export function matchSpreadPages(items) {
+  const spreads =
+    items.filter(
+      (item) =>
+        isSpreadSize(item) &&
+        item.signature?.left &&
+        item.signature?.right
+    )
+
+  const candidates = []
+
+  for (const item of items) {
+    if (
+      isSpreadSize(item) ||
+      !item.signature?.page
+    ) {
+      continue
+    }
+
+    let best = null
+
+    for (const spread of spreads) {
+      const distance =
+        Math.min(
+          signatureDistance(
+            item.signature.page,
+            spread.signature.left
+          ),
+          signatureDistance(
+            item.signature.page,
+            spread.signature.right
+          )
+        )
+
+      if (
+        distance < PAGE_MATCH_THRESHOLD &&
+        (!best || distance < best.distance)
+      ) {
+        best = {
+          pageId: item.id,
+          spreadId: spread.id,
+          distance
+        }
+      }
+    }
+
+    if (best) {
+      candidates.push(best)
+    }
+  }
+
+  // 1つの見開きにつくページは2枚まで（よく似たものから）
+  candidates.sort(
+    (a, b) => a.distance - b.distance
+  )
+
+  const counts = new Map()
+  const pages = new Map()
+
+  for (const candidate of candidates) {
+    const count =
+      counts.get(candidate.spreadId) || 0
+
+    if (count >= MAX_PAGES_PER_SPREAD) {
+      continue
+    }
+
+    counts.set(candidate.spreadId, count + 1)
+    pages.set(
+      candidate.pageId,
+      candidate.spreadId
+    )
+  }
+
+  return pages
+}
+
+// まとめて取り込むときの種類の初期値。撮った順に、
+// 1. 最初の縦（見開きのページを除く）を表紙（その号にまだ表紙がなければ）
+// 2. 表紙のあと最初の見開きまでの縦（扉。ない号もある）と、その見開き、
+//    その見開きのページを巻頭カラー（その号にまだ巻頭カラーがなければ）
+// 3. それ以外をセンターカラー
+// とする。見開きのページかどうかは spreadId（matchSpreadPages の結果）で見る。
+// 登録前に画面で直せる。
 export function suggestKinds(
-  sizes,
+  items,
   {
     hasCover = false,
     hasOpening = false
   } = {}
 ) {
-  const kinds = sizes.map(() => 'center')
+  const kinds = items.map(() => 'center')
+
+  const isPage = (item) =>
+    Boolean(item.spreadId)
 
   let coverIndex = -1
 
   if (!hasCover) {
     coverIndex =
-      sizes.findIndex(
-        (size) => !isSpreadSize(size)
+      items.findIndex(
+        (item) =>
+          !isSpreadSize(item) &&
+          !isPage(item)
       )
 
     if (coverIndex >= 0) {
@@ -851,83 +965,101 @@ export function suggestKinds(
 
   if (!hasOpening) {
     const spreadIndex =
-      sizes.findIndex(
-        (size, index) =>
+      items.findIndex(
+        (item, index) =>
           index > coverIndex &&
-          isSpreadSize(size)
+          isSpreadSize(item)
       )
 
     if (spreadIndex >= 0) {
-      for (
-        let index = coverIndex + 1;
-        index <= spreadIndex;
-        index += 1
-      ) {
-        kinds[index] = 'opening'
-      }
+      const spreadId = items[spreadIndex].id
 
-      let pagesLeft = SPREAD_PAGES
+      items.forEach((item, index) => {
+        const isOwnPage =
+          item.spreadId === spreadId
 
-      for (
-        let index = spreadIndex + 1;
-        index < sizes.length && pagesLeft > 0;
-        index += 1
-      ) {
-        if (isSpreadSize(sizes[index])) {
-          break
+        const isTitlePage =
+          index > coverIndex &&
+          index < spreadIndex &&
+          !isPage(item)
+
+        if (
+          index === spreadIndex ||
+          isOwnPage ||
+          isTitlePage
+        ) {
+          kinds[index] = 'opening'
         }
-
-        kinds[index] = 'opening'
-        pagesLeft -= 1
-      }
+      })
     }
   }
 
   return kinds
 }
 
-// 同じ作品のカラーとしてまとまる画像の組。並び順と種類から決める。
+// 同じ作品のカラーとしてまとまる画像の組。
+// ・見開きと、そのページ（spreadId が同じもの）は1組
 // ・続いている巻頭カラーは1組
-// ・センターカラーの見開きと、そのあとの縦2枚（各ページ）は1組
 // ・それ以外は1枚ずつ
-// 返り値は、画像ごとの組の番号。
+// 返り値は、画像ごとの組の番号（先に出てきた組から0, 1, 2…）。
 export function groupColorPieces(items) {
-  const groups = []
+  const parent = items.map((_, index) => index)
 
-  let group = -1
-  let previousKind = ''
-  let pagesLeft = 0
-
-  for (const item of items) {
-    const kind = normalizeKind(item.kind)
-    const spread = isSpreadSize(item)
-
-    if (
-      kind === 'opening' &&
-      previousKind === 'opening'
-    ) {
-      groups.push(group)
-    } else if (
-      kind === 'center' &&
-      previousKind === 'center' &&
-      !spread &&
-      pagesLeft > 0
-    ) {
-      groups.push(group)
-      pagesLeft -= 1
-    } else {
-      group += 1
-      groups.push(group)
-      pagesLeft =
-        kind === 'center' && spread
-          ? SPREAD_PAGES
-          : 0
+  const find = (index) => {
+    while (parent[index] !== index) {
+      parent[index] = parent[parent[index]]
+      index = parent[index]
     }
 
-    previousKind = kind
+    return index
   }
 
-  return groups
+  const join = (a, b) => {
+    const rootA = find(a)
+    const rootB = find(b)
+
+    if (rootA !== rootB) {
+      parent[Math.max(rootA, rootB)] =
+        Math.min(rootA, rootB)
+    }
+  }
+
+  const indexById = new Map(
+    items.map((item, index) => [
+      item.id,
+      index
+    ])
+  )
+
+  items.forEach((item, index) => {
+    if (
+      item.spreadId &&
+      indexById.has(item.spreadId)
+    ) {
+      join(index, indexById.get(item.spreadId))
+    }
+
+    if (
+      index > 0 &&
+      normalizeKind(item.kind) === 'opening' &&
+      normalizeKind(items[index - 1].kind) ===
+        'opening'
+    ) {
+      join(index, index - 1)
+    }
+  })
+
+  const numbers = new Map()
+
+  return items.map((_, index) => {
+    const root = find(index)
+
+    if (!numbers.has(root)) {
+      numbers.set(root, numbers.size)
+    }
+
+    return numbers.get(root)
+  })
 }
 
 // 複数の年の索引を、新しい号から順にたどる

@@ -28,6 +28,8 @@ import {
   suggestKinds,
   getImageLabel,
   groupColorPieces,
+  matchSpreadPages,
+  signatureDistance,
   normalizeKind,
   thumbKey,
   upsertMagazine,
@@ -310,13 +312,75 @@ test('号は番号順に並ぶ。壊れた索引は安全に読み飛ばす', ()
   )
 })
 
-test('種類の初期値: 表紙→巻頭カラー（扉＋見開き＋各ページ）→センターカラー', () => {
-  const P = { width: 1872, height: 2732 }
-  const L = { width: 2732, height: 1994 }
+// テスト用の署名。同じ「絵」の番号なら同じ明るさの並びになる。
+const art = (n) =>
+  Array.from({ length: 216 }, (_, i) => ((i * 37 + n * 101) % 256))
 
-  // ジャンプのいつもの並び: 表紙、巻頭の扉・見開き・各ページ、センターカラー3枚
+const shifted = (n, amount) =>
+  art(n).map((value) => Math.min(255, value + amount))
+
+const page = (id, n) => ({
+  id,
+  width: 1872,
+  height: 2732,
+  signature: n === null ? null : { page: art(n) }
+})
+
+const spread = (id, left, right) => ({
+  id,
+  width: 2732,
+  height: 1994,
+  signature: { left: art(left), right: art(right) }
+})
+
+// matchSpreadPages の結果を各画像に付ける
+const withPages = (items) => {
+  const pages = matchSpreadPages(items)
+
+  return items.map((item) => ({
+    ...item,
+    spreadId: pages.get(item.id) || null
+  }))
+}
+
+test('見開きのページを、画像の中身で見分ける', () => {
+  assert.equal(signatureDistance(art(1), art(1)), 0)
+  assert.ok(signatureDistance(art(1), shifted(1, 10)) <= 10)
+  assert.ok(signatureDistance(art(1), art(2)) > 22)
+  assert.equal(signatureDistance(art(1), null), Infinity)
+
+  const pages =
+    matchSpreadPages([
+      spread('s1', 10, 11),
+      page('p1', 11),
+      { ...page('p2', 10), signature: { page: shifted(10, 8) } },
+      page('p3', 12),
+      page('p4', 10),
+      page('p5', null)
+    ])
+
+  // 1つの見開きにつくのは、よく似た2枚まで
   assert.deepEqual(
-    suggestKinds([P, P, L, P, P, P, P, P]),
+    Object.fromEntries(pages),
+    { p1: 's1', p4: 's1' }
+  )
+})
+
+test('種類の初期値: 巻頭カラーは扉の有無や各ページの有無に合わせる', () => {
+  // 扉あり・各ページあり: 表紙、扉、見開き、各ページ2枚、センターカラー3枚
+  assert.deepEqual(
+    suggestKinds(
+      withPages([
+        page('cover', 1),
+        page('title', 2),
+        spread('s', 3, 4),
+        page('r', 3),
+        page('l', 4),
+        page('c1', 5),
+        page('c2', 6),
+        page('c3', 7)
+      ])
+    ),
     [
       'cover',
       'opening',
@@ -329,72 +393,106 @@ test('種類の初期値: 表紙→巻頭カラー（扉＋見開き＋各ペー
     ]
   )
 
-  // センターカラーが見開きのときも、見開きと各ページはセンターカラー
+  // 扉なし（見開きだけ）・各ページあり
   assert.deepEqual(
-    suggestKinds([P, P, L, P, P, L, P, P]),
-    [
-      'cover',
-      'opening',
-      'opening',
-      'opening',
-      'opening',
-      'center',
-      'center',
-      'center'
-    ]
+    suggestKinds(
+      withPages([
+        page('cover', 1),
+        spread('s', 3, 4),
+        page('r', 3),
+        page('l', 4),
+        page('c1', 5)
+      ])
+    ),
+    ['cover', 'opening', 'opening', 'opening', 'center']
+  )
+
+  // 各ページを撮っていない回は、見開きのあとの縦をセンターカラーにする
+  assert.deepEqual(
+    suggestKinds(
+      withPages([
+        page('cover', 1),
+        page('title', 2),
+        spread('s', 3, 4),
+        page('c1', 5),
+        page('c2', 6)
+      ])
+    ),
+    ['cover', 'opening', 'opening', 'center', 'center']
+  )
+
+  // センターカラーの見開きと各ページはセンターカラー
+  assert.deepEqual(
+    suggestKinds(
+      withPages([
+        page('cover', 1),
+        spread('s', 3, 4),
+        spread('cs', 8, 9),
+        page('cr', 8),
+        page('cl', 9)
+      ])
+    ),
+    ['cover', 'opening', 'center', 'center', 'center']
   )
 
   // 表紙と巻頭カラーがすでにある号に足すときは、すべてセンターカラー
   assert.deepEqual(
-    suggestKinds([P, L, P], {
+    suggestKinds(withPages([page('a', 1), spread('s', 3, 4)]), {
       hasCover: true,
       hasOpening: true
     }),
-    ['center', 'center', 'center']
-  )
-
-  // 表紙だけある号では、扉から見開きの各ページまでが巻頭カラー
-  assert.deepEqual(
-    suggestKinds([P, L, P, P, P], {
-      hasCover: true
-    }),
-    ['opening', 'opening', 'opening', 'opening', 'center']
+    ['center', 'center']
   )
 
   // 見開きがなければ巻頭カラーは決めない
   assert.deepEqual(
-    suggestKinds([P, P, P]),
-    ['cover', 'center', 'center']
+    suggestKinds(withPages([page('a', 1), page('b', 2)])),
+    ['cover', 'center']
   )
 })
 
 test('同じ作品としてまとまる画像の組', () => {
-  const P = { width: 1872, height: 2732 }
-  const L = { width: 2732, height: 1994 }
+  const items =
+    withPages([
+      page('cover', 1),
+      page('title', 2),
+      spread('s', 3, 4),
+      page('r', 3),
+      page('l', 4),
+      page('c1', 5),
+      spread('cs', 8, 9),
+      page('cr', 8),
+      page('cl', 9),
+      page('c3', 7)
+    ])
 
-  const items = [
-    { ...P, kind: 'cover' },
-    { ...P, kind: 'opening' },
-    { ...L, kind: 'opening' },
-    { ...P, kind: 'opening' },
-    { ...P, kind: 'opening' },
-    { ...P, kind: 'center' },
-    { ...L, kind: 'center' },
-    { ...P, kind: 'center' },
-    { ...P, kind: 'center' },
-    { ...P, kind: 'center' }
-  ]
+  const kinds = suggestKinds(items)
 
   assert.deepEqual(
-    groupColorPieces(items),
+    groupColorPieces(
+      items.map((item, index) => ({
+        ...item,
+        kind: kinds[index]
+      }))
+    ),
     [0, 1, 1, 1, 1, 2, 3, 3, 3, 4]
   )
 
-  // 以前の「見開き」も巻頭カラーとして扱う
+  // 並べ替えても、見開きとそのページは同じ組のまま
   assert.deepEqual(
     groupColorPieces([
-      { ...L, kind: 'spread' },
-      { ...P, kind: 'opening' }
+      { ...items[7], kind: 'center' },
+      { ...items[0], kind: 'cover' },
+      { ...items[6], kind: 'center' }
+    ]),
+    [0, 1, 0]
+  )
+
+  // 以前の「見開き」も巻頭カラーとして続きを判定する
+  assert.deepEqual(
+    groupColorPieces([
+      { id: 'a', width: 2732, height: 1994, kind: 'spread' },
+      { id: 'b', width: 1872, height: 2732, kind: 'opening' }
     ]),
     [0, 0]
   )

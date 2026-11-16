@@ -31,6 +31,7 @@ import {
   getKindLabel,
   groupColorPieces,
   isSpreadSize,
+  matchSpreadPages,
   moveImageInIssue,
   normalizeSlug,
   normalizeYear,
@@ -264,8 +265,28 @@ function ColorIssuePage({
         )
       }
 
+      // 見開きと、その各ページ（撮った場合）を画像の中身で対応づける
+      const stamp = Date.now()
+
+      const analyzed =
+        prepared.map((item, position) => ({
+          id: `${stamp}-${position}`,
+          width: item.width,
+          height: item.height,
+          signature: item.signature
+        }))
+
+      const pages =
+        matchSpreadPages(analyzed)
+
+      const withPages =
+        analyzed.map((item) => ({
+          ...item,
+          spreadId: pages.get(item.id) || null
+        }))
+
       const kinds =
-        suggestKinds(prepared, {
+        suggestKinds(withPages, {
           hasCover: images.some(
             (image) =>
               image.kind === 'cover'
@@ -288,7 +309,9 @@ function ColorIssuePage({
           )
 
           return {
-            id: `${Date.now()}-${position}`,
+            id: withPages[position].id,
+            spreadId:
+              withPages[position].spreadId,
             prepared: item,
             previewUrl,
             kind:
@@ -396,9 +419,12 @@ function ColorIssuePage({
   const resuggestPendingKinds = () => {
     const kinds =
       suggestKinds(
-        pending.items.map(
-          (item) => item.prepared
-        ),
+        pending.items.map((item) => ({
+          id: item.id,
+          spreadId: item.spreadId,
+          width: item.prepared.width,
+          height: item.prepared.height
+        })),
         {
           hasCover: images.some(
             (image) =>
@@ -613,7 +639,10 @@ function ColorIssuePage({
         const groups =
           groupColorPieces(
             current.items.map((item) => ({
-              ...item.prepared,
+              id: item.id,
+              spreadId: item.spreadId,
+              width: item.prepared.width,
+              height: item.prepared.height,
               kind: item.kind
             }))
           )
@@ -781,7 +810,7 @@ function ColorIssuePage({
               </label>
 
               <p className="cloud-settings-note">
-                種類は撮った順に自動で付けています。巻頭カラーとセンターカラーの見開きは、同じ組の画像にまとめて作品タグが付きます。
+                種類は撮った順に自動で付けています。見開きの各ページは画像の中身から見分けて、見開きと同じ組にします。同じ組の画像には、まとめて作品タグが付きます。
               </p>
 
               <button
@@ -853,7 +882,9 @@ function ColorIssuePage({
                       <small>
                         {isSpreadSize(item.prepared)
                           ? '見開き'
-                          : '縦'}
+                          : item.spreadId
+                            ? '見開きのページ'
+                            : '縦'}
                         ・{item.prepared.width} ×{' '}
                         {item.prepared.height}px
                         {item.prepared.trimmed
