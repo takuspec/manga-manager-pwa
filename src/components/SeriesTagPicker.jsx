@@ -16,10 +16,7 @@ function SeriesTagPicker({
   onDone,
   onCancel
 }) {
-  const [selected, setSelected] =
-    useState(() =>
-      normalizeSeriesTags(value)
-    )
+  const selected = normalizeSeriesTags(value)
 
   const [query, setQuery] = useState('')
 
@@ -80,17 +77,16 @@ function SeriesTagPicker({
     </button>
   )
 
+  // 押したらすぐ決まる。付いていない作品を押すとその作品に付け替え、
+  // 付いている作品を押すと外す。
   const toggle = (title) => {
-    setSelected((current) => {
-      return current.includes(title)
-        ? current.filter(
+    onDone(
+      selected.includes(title)
+        ? selected.filter(
             (item) => item !== title
           )
-        : normalizeSeriesTags([
-            ...current,
-            title
-          ])
-    })
+        : normalizeSeriesTags([title])
+    )
   }
 
   return createPortal(
@@ -112,12 +108,7 @@ function SeriesTagPicker({
 
           <strong>作品タグ</strong>
 
-          <button
-            type="button"
-            onClick={() => onDone(selected)}
-          >
-            決定
-          </button>
+          <span aria-hidden="true" />
         </div>
 
         {selected.length > 0 && (
@@ -148,7 +139,14 @@ function SeriesTagPicker({
         />
 
         <div className="series-picker-list">
-          {!keyword && renderItem(ONE_SHOT_TAG)}
+          {!keyword && !showFeatured && (
+            <>
+              <h3 className="series-picker-heading">
+                読み切り
+              </h3>
+              {renderItem(ONE_SHOT_TAG)}
+            </>
+          )}
 
           {showFeatured && (
             <>
@@ -156,6 +154,8 @@ function SeriesTagPicker({
                 この号に載っている作品（
                 {featured.length}）
               </h3>
+              {/* 読み切りは、この号の作品の先頭にいつも出す */}
+              {renderItem(ONE_SHOT_TAG)}
               {featured.map(renderItem)}
               {showAll && (
                 <h3 className="series-picker-heading">
