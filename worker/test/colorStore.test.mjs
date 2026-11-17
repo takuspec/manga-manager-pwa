@@ -647,3 +647,64 @@ test('見開きの各ページは、送ったあとも見開きのファイル�
     ]
   )
 })
+
+test('新しい版で保存された索引は、古い版では上書きしない。知らない項目は残す', async () => {
+  const key = 'keep/2019/index.json'
+
+  const remote = {
+    version: 2,
+    slug: 'keep',
+    year: 2019,
+    issues: {
+      '50': {
+        images: [
+          {
+            file: '01-cover.jpg',
+            seq: 1,
+            kind: 'cover',
+            futureField: 'keep'
+          }
+        ]
+      }
+    }
+  }
+
+  await bucket.put(key, JSON.stringify(remote))
+
+  await store.updateYearIndex(
+    'keep',
+    2019,
+    (index) => index
+  )
+
+  const kept =
+    JSON.parse(
+      new TextDecoder().decode(
+        bucket.objects.get(key).bytes
+      )
+    )
+
+  assert.equal(
+    kept.issues['50'].images[0].futureField,
+    'keep'
+  )
+  assert.equal(
+    kept.version,
+    library.YEAR_INDEX_FORMAT
+  )
+
+  kept.version = library.YEAR_INDEX_FORMAT + 1
+  await bucket.put(key, JSON.stringify(kept))
+
+  await assert.rejects(
+    store.updateYearIndex(
+      'keep',
+      2019,
+      (index) => index
+    ),
+    (error) => error.code === 'outdated'
+  )
+
+  kept.version = library.YEAR_INDEX_FORMAT
+  await bucket.put(key, JSON.stringify(kept))
+})

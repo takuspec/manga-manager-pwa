@@ -24,6 +24,7 @@ import {
   normalizeSlug,
   normalizeYearIndex,
   thumbKey,
+  YEAR_INDEX_FORMAT,
   upsertMagazine,
   yearIndexKey
 } from './colorLibrary.js'
@@ -258,6 +259,17 @@ export async function updateYearIndex(
     throw new CloudError(
       'network',
       '通信できないため保存できませんでした。'
+    )
+  }
+
+  // ほかの端末の新しい版で保存された索引は、古い版では上書きしない
+  if (
+    Number(latest.data?.version) >
+    YEAR_INDEX_FORMAT
+  ) {
+    throw new CloudError(
+      'outdated',
+      'アプリが古いため保存できませんでした。アプリを閉じて開き直し、更新してください。'
     )
   }
 

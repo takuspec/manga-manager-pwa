@@ -585,6 +585,11 @@ export function normalizeSeriesTags(value) {
   return tags
 }
 
+// 年ごとの索引の形式。新しい項目を足したら上げる。
+// これより新しい形式の索引を、古いアプリが上書きしないようにする。
+// 2: 見開きのページ（pageOf）を追加
+export const YEAR_INDEX_FORMAT = 2
+
 function normalizeImage(image) {
   const file = String(image?.file || '')
 
@@ -595,6 +600,8 @@ function normalizeImage(image) {
   }
 
   return {
+    // 知らない項目も残す（将来の版が足した項目を消さないため）
+    ...image,
     file,
     seq: Number(image.seq) || 0,
     kind: normalizeKind(image.kind),
@@ -654,7 +661,7 @@ export function normalizeYearIndex(
   }
 
   return {
-    version: 1,
+    version: YEAR_INDEX_FORMAT,
     slug,
     year,
     issues

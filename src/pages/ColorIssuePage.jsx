@@ -12,7 +12,9 @@ import {
 import CloudImage from '../components/CloudImage'
 import ColorViewer from '../components/ColorViewer'
 import SeriesTagPicker from '../components/SeriesTagPicker'
-import prepareImage from '../utils/prepareImage'
+import prepareImage, {
+  signatureFromBlob
+} from '../utils/prepareImage'
 import uploadQueue from '../utils/uploadQueue'
 import {
   findAppMagazine,
@@ -21,6 +23,7 @@ import {
 import {
   deleteImageFiles,
   getCachedRootIndex,
+  getImageBlob,
   loadRootIndex,
   loadYearIndex,
   updateYearIndex
@@ -41,6 +44,7 @@ import {
   removeImageFromIssue,
   setImageKindInIssue,
   setImageSeriesInIssue,
+  setSpreadPagesInIssue,
   suggestKinds,
   thumbKey
 } from '../utils/colorLibrary'
@@ -630,6 +634,92 @@ function ColorIssuePage({
     }
   }
 
+  // 【一時的な機能】登録済みの画像で、見開きと
+  // それを1ページずつ撮った画像を自動で見つけてまとめる
+  const handleGroupSpreads = async () => {
+    setBusy('判定中')
+    setMessage(null)
+
+    let pages
+
+    try {
+      const items = []
+
+      for (const image of images) {
+        const blob =
+          await getImageBlob(
+            thumbKey(
+              slug,
+              year,
+              folder,
+              image.file
+            )
+          )
+
+        items.push({
+          id: image.file,
+          width: image.width,
+          height: image.height,
+          signature:
+            await signatureFromBlob(blob)
+        })
+      }
+
+      pages = matchSpreadPages(items)
+    } catch (error) {
+      setBusy('')
+      setMessage({
+        type: 'error',
+        text:
+          error?.message ||
+          '判定できませんでした。'
+      })
+      return
+    }
+
+    setBusy('')
+
+    if (pages.size === 0) {
+      setMessage({
+        type: 'error',
+        text: '見開きのページは見つかりませんでした（何も変えていません）。'
+      })
+      return
+    }
+
+    const ok = await change(
+      '保存中',
+      (current) =>
+        setSpreadPagesInIssue(
+          current,
+          folder,
+          pages
+        )
+    )
+
+    if (ok) {
+      setMessage({
+        type: 'ok',
+        text: `見開き ${
+          new Set(pages.values()).size
+        } 枚に、ページ ${pages.size} 枚をまとめました。「完了」を押すと一覧は見開きだけになります。`
+      })
+    }
+  }
+
+  const handleUngroupSpreads = () =>
+    change('保存中', (current) =>
+      setSpreadPagesInIssue(
+        current,
+        folder,
+        new Map()
+      )
+    )
+
+  const hasGroupedPages = images.some(
+    (image) => image.pageOf
+  )
+
   const handleDelete = async (image) => {
     const ok =
       window.confirm(
@@ -807,6 +897,37 @@ function ColorIssuePage({
 
       {state.status === 'ready' && (
         <div className="color-page">
+          {isEditing && images.length > 1 && (
+            <div className="color-temp-tool">
+              <p className="color-temp-tool-title">
+                🔧 一時的な機能：見開きのまとめ
+              </p>
+              <p className="color-temp-tool-text">
+                前に登録した画像から、見開きと「それを1ページずつ撮った画像」を自動で探してまとめます。まとめると、一覧には見開きだけが出て、押すと3枚とも見られます。
+              </p>
+              <button
+                type="button"
+                className="color-temp-tool-button"
+                disabled={!canChange}
+                onClick={handleGroupSpreads}
+              >
+                {busy === '判定中'
+                  ? '判定中…'
+                  : 'この号の見開きを自動でまとめる'}
+              </button>
+              {hasGroupedPages && (
+                <button
+                  type="button"
+                  className="color-temp-tool-undo"
+                  disabled={!canChange}
+                  onClick={handleUngroupSpreads}
+                >
+                  まとめを解除する
+                </button>
+              )}
+            </div>
+          )}
+
           {state.fromCache && (
             <div className="color-notice">
               <p>
