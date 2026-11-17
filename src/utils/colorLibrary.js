@@ -783,6 +783,43 @@ export function moveImageInIssue(
   )
 }
 
+// 画像を号の中の toIndex 番目へ動かす（ドラッグでの並べ替え）
+export function moveImageToInIssue(
+  index,
+  folder,
+  fileName,
+  toIndex,
+  now = new Date().toISOString()
+) {
+  return updateIssue(
+    index,
+    folder,
+    (current) => {
+      const from =
+        current.findIndex(
+          (image) => image.file === fileName
+        )
+
+      if (
+        from < 0 ||
+        !Number.isInteger(toIndex) ||
+        toIndex < 0 ||
+        toIndex >= current.length ||
+        toIndex === from
+      ) {
+        return current
+      }
+
+      const next = [...current]
+      const [moved] = next.splice(from, 1)
+
+      next.splice(toIndex, 0, moved)
+      return next
+    },
+    now
+  )
+}
+
 export function setImageKindInIssue(
   index,
   folder,
@@ -1164,7 +1201,8 @@ export const SERIES_IMAGE_KINDS = [
   { id: 'all', label: 'すべて' },
   { id: 'cover', label: '表紙' },
   { id: 'opening', label: '巻頭カラー' },
-  { id: 'center', label: 'センターカラー' }
+  { id: 'center', label: 'センターカラー' },
+  { id: 'other', label: 'その他' }
 ]
 
 // listSeriesImages の結果（新しい号から順）を絞り込み、並べ替える。

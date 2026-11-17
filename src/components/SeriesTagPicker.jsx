@@ -77,15 +77,18 @@ function SeriesTagPicker({
     </button>
   )
 
-  // 押したらすぐ決まる。付いていない作品を押すとその作品に付け替え、
-  // 付いている作品を押すと外す。
+  // 押したらすぐ決まる。付いていない作品を押すと追加、付いている作品を押すと外す。
+  // 2つ目を付けるときは、もう一度開いて押す。
   const toggle = (title) => {
     onDone(
       selected.includes(title)
         ? selected.filter(
             (item) => item !== title
           )
-        : normalizeSeriesTags([title])
+        : normalizeSeriesTags([
+            ...selected,
+            title
+          ])
     )
   }
 

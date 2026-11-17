@@ -37,6 +37,7 @@ import {
   hideSpreadPages,
   matchSpreadPages,
   moveImageInIssue,
+  moveImageToInIssue,
   normalizeKind,
   normalizeSlug,
   normalizeYear,
@@ -154,6 +155,10 @@ function ColorIssuePage({
   // { type: 'pending', id } または { type: 'saved', file }
   const [tagTarget, setTagTarget] =
     useState(null)
+
+  // 編集中のドラッグでの並べ替え（file: 動かす画像、over: 指の下の画像）
+  const [drag, setDrag] = useState(null)
+  const dragRef = useRef(null)
 
   const pendingFilesRef = useRef([])
   const previewUrlsRef = useRef([])
@@ -720,6 +725,116 @@ function ColorIssuePage({
     (image) => image.pageOf
   )
 
+  const dragHandlers = (image) => ({
+    onPointerDown: (event) => {
+      if (!canChange) {
+        return
+      }
+
+      event.preventDefault()
+      event.currentTarget.setPointerCapture?.(
+        event.pointerId
+      )
+
+      dragRef.current = {
+        file: image.file,
+        over: image.file
+      }
+      setDrag(dragRef.current)
+    },
+    onPointerMove: (event) => {
+      const current = dragRef.current
+
+      if (!current) {
+        return
+      }
+
+      // 画面の上下の端に近づいたら少しずつスクロール
+      if (event.clientY < 90) {
+        window.scrollBy(0, -14)
+      } else if (
+        event.clientY >
+        window.innerHeight - 90
+      ) {
+        window.scrollBy(0, 14)
+      }
+
+      const over =
+        document
+          .elementFromPoint(
+            event.clientX,
+            event.clientY
+          )
+          ?.closest('[data-drag-file]')
+          ?.getAttribute('data-drag-file')
+
+      if (over && over !== current.over) {
+        dragRef.current = {
+          ...current,
+          over
+        }
+        setDrag(dragRef.current)
+      }
+    },
+    onPointerUp: () => {
+      const current = dragRef.current
+
+      dragRef.current = null
+      setDrag(null)
+
+      if (
+        !current ||
+        current.over === current.file
+      ) {
+        return
+      }
+
+      const to =
+        images.findIndex(
+          (item) => item.file === current.over
+        )
+
+      change('保存中', (index) =>
+        moveImageToInIssue(
+          index,
+          folder,
+          current.file,
+          to
+        )
+      )
+    },
+    onPointerCancel: () => {
+      dragRef.current = null
+      setDrag(null)
+    }
+  })
+
+  // 見開きの種類を変えたら、それを1ページずつ撮った画像も同じ種類にする
+  const changeKind = (image, kind) =>
+    change('保存中', (current) => {
+      let next =
+        setImageKindInIssue(
+          current,
+          folder,
+          image.file,
+          kind
+        )
+
+      for (const page of images) {
+        if (page.pageOf === image.file) {
+          next =
+            setImageKindInIssue(
+              next,
+              folder,
+              page.file,
+              kind
+            )
+        }
+      }
+
+      return next
+    })
+
   const handleDelete = async (image) => {
     const ok =
       window.confirm(
@@ -1223,11 +1338,23 @@ function ColorIssuePage({
               return (
               <div
                 key={image.file}
-                className={
-                  isSpreadSize(image)
-                    ? 'color-image-card spread'
-                    : 'color-image-card'
+                data-drag-file={
+                  isEditing ? image.file : undefined
                 }
+                className={[
+                  'color-image-card',
+                  isSpreadSize(image) ? 'spread' : '',
+                  drag?.file === image.file
+                    ? 'dragging'
+                    : '',
+                  drag &&
+                  drag.over === image.file &&
+                  drag.file !== image.file
+                    ? 'drag-over'
+                    : ''
+                ]
+                  .filter(Boolean)
+                  .join(' ')}
               >
                 <button
                   type="button"
@@ -1263,6 +1390,18 @@ function ColorIssuePage({
                   )}
                 </span>
 
+                {isEditing && (
+                  <button
+                    type="button"
+                    className="color-drag-handle"
+                    aria-label="押さえたまま動かして並べ替え"
+                    disabled={!canChange}
+                    {...dragHandlers(image)}
+                  >
+                    ⠿
+                  </button>
+                )}
+
                 {!isEditing &&
                   image.series.length > 0 && (
                     <span className="color-series-line">
@@ -1277,16 +1416,9 @@ function ColorIssuePage({
                       value={image.kind}
                       disabled={!canChange}
                       onChange={(event) =>
-                        change(
-                          '保存中',
-                          (current) =>
-                            setImageKindInIssue(
-                              current,
-                              folder,
-                              image.file,
-                              event.target
-                                .value
-                            )
+                        changeKind(
+                          image,
+                          event.target.value
                         )
                       }
                     >

@@ -17,6 +17,7 @@ import {
   listIssues,
   listSeriesImages,
   moveImageInIssue,
+  moveImageToInIssue,
   nextSequence,
   normalizeRootIndex,
   normalizeSlug,
@@ -879,5 +880,37 @@ test('見開きの各ページは一覧で見開きにまとめる', () => {
   assert.deepEqual(
     index.issues['50'].images.map((item) => item.pageOf),
     ['', '', '', '', '05-center.jpg']
+  )
+})
+
+test('ドラッグでの並べ替え: 指定した位置へ動かす', () => {
+  const index = normalizeYearIndex(
+    {
+      issues: {
+        '01': {
+          images: ['01-cover.jpg', '02-opening.jpg', '03-center.jpg', '04-other.jpg'].map(
+            (file, i) => ({ file, seq: i + 1, kind: 'other' })
+          )
+        }
+      }
+    },
+    'jump',
+    2026
+  )
+
+  const files = (next) =>
+    next.issues['01'].images.map((image) => image.file)
+
+  assert.deepEqual(
+    files(moveImageToInIssue(index, '01', '04-other.jpg', 1)),
+    ['01-cover.jpg', '04-other.jpg', '02-opening.jpg', '03-center.jpg']
+  )
+  assert.deepEqual(
+    files(moveImageToInIssue(index, '01', '01-cover.jpg', 3)),
+    ['02-opening.jpg', '03-center.jpg', '04-other.jpg', '01-cover.jpg']
+  )
+  assert.deepEqual(
+    files(moveImageToInIssue(index, '01', '01-cover.jpg', 9)),
+    ['01-cover.jpg', '02-opening.jpg', '03-center.jpg', '04-other.jpg']
   )
 })
