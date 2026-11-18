@@ -14,7 +14,7 @@ import {
   loadYearIndexes
 } from '../utils/colorStore'
 import {
-  ONE_SHOT_TAG,
+  PINNED_TAGS,
   SERIES_STATUS_LABELS,
   describeSeriesPeriod,
   findAppMagazine
@@ -256,10 +256,10 @@ function ColorSeriesPage({
           )}
 
           {!series &&
-            title === ONE_SHOT_TAG && (
+            PINNED_TAGS.includes(title) && (
               <p className="color-series-row-meta">
                 <span className="color-status-badge oneshot">
-                  読み切り
+                  {title}
                 </span>
               </p>
             )}

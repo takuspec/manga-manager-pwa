@@ -362,6 +362,12 @@ export const SERIES_STATUS_LABELS = {
 // 読み切りはまとめて1つの作品タグにする（作品名ごとには分けない）
 export const ONE_SHOT_TAG = '読み切り'
 
+// 合併号のカラーページにまとめて付けるタグ
+export const COMBINED_TAG = '合併号'
+
+// 作品名とは別に、いつも先頭に出すタグ
+export const PINNED_TAGS = [ONE_SHOT_TAG, COMBINED_TAG]
+
 function normalizeStatus(value) {
   return value === 'completed' ||
     value === 'paused'

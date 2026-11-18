@@ -22,7 +22,7 @@ import {
   loadYearIndexes
 } from '../utils/colorStore'
 import {
-  ONE_SHOT_TAG,
+  PINNED_TAGS,
   SERIES_FILTERS,
   SERIES_SORTS,
   arrangeSeriesGroups,
@@ -335,34 +335,36 @@ function ColorMagazinePage({
         catalogSeries,
         state.seriesGroups.filter(
           (group) =>
-            group.title !== ONE_SHOT_TAG
+            !PINNED_TAGS.includes(group.title)
         )
       ),
       filter,
       sort
     )
 
-  // 読み切りは1枚のカードにまとめ、「すべて」のときに先頭へ出す
-  const oneShotTagged =
-    state.seriesGroups.find(
-      (group) => group.title === ONE_SHOT_TAG
-    )
+  // 読み切り・合併号はそれぞれ1枚のカードにまとめ、「すべて」のときに先頭へ出す
+  const pinnedGroups =
+    PINNED_TAGS.map((title) => {
+      const tagged =
+        state.seriesGroups.find(
+          (group) => group.title === title
+        )
+
+      return {
+        title,
+        status: 'oneshot',
+        startLabel: '',
+        duration: '',
+        imageId: '',
+        image: '',
+        count: tagged?.count || 0,
+        cover: tagged?.cover || null
+      }
+    })
 
   const seriesGroups =
     filter === 'all'
-      ? [
-          {
-            title: ONE_SHOT_TAG,
-            status: 'oneshot',
-            startLabel: '',
-            duration: '',
-            imageId: '',
-            image: '',
-            count: oneShotTagged?.count || 0,
-            cover: oneShotTagged?.cover || null
-          },
-          ...arrangedSeries
-        ]
+      ? [...pinnedGroups, ...arrangedSeries]
       : arrangedSeries
 
   const updateSearch = (changes) => {
@@ -788,7 +790,7 @@ function ColorMagazinePage({
 
                     <div className="card-unread">
                       {group.status === 'oneshot'
-                        ? '読み切り'
+                        ? group.title
                         : group.duration ||
                           '期間未設定'}
                     </div>

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { createPortal } from 'react-dom'
 import { normalizeSeriesTags } from '../utils/colorLibrary'
-import { ONE_SHOT_TAG } from '../utils/colorCatalog'
+import { PINNED_TAGS } from '../utils/colorCatalog'
 
 const MAX_VISIBLE_CHOICES = 60
 
@@ -38,7 +38,7 @@ function SeriesTagPicker({
     !keyword && featured.length > 0
 
   const searchable = [
-    ONE_SHOT_TAG,
+    ...PINNED_TAGS,
     ...(showAll ? allChoices : featured)
   ]
 
@@ -145,9 +145,9 @@ function SeriesTagPicker({
           {!keyword && !showFeatured && (
             <>
               <h3 className="series-picker-heading">
-                読み切り
+                読み切り・合併号
               </h3>
-              {renderItem(ONE_SHOT_TAG)}
+              {PINNED_TAGS.map(renderItem)}
             </>
           )}
 
@@ -157,8 +157,8 @@ function SeriesTagPicker({
                 この号に載っている作品（
                 {featured.length}）
               </h3>
-              {/* 読み切りは、この号の作品の先頭にいつも出す */}
-              {renderItem(ONE_SHOT_TAG)}
+              {/* 読み切り・合併号は、この号の作品の先頭にいつも出す */}
+              {PINNED_TAGS.map(renderItem)}
               {featured.map(renderItem)}
               {showAll && (
                 <h3 className="series-picker-heading">
