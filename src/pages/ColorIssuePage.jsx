@@ -4,7 +4,10 @@ import {
   useState,
   useSyncExternalStore
 } from 'react'
-import { useParams } from 'react-router-dom'
+import {
+  useNavigate,
+  useParams
+} from 'react-router-dom'
 import {
   useGoBack,
   useScrollTopOnOpen
@@ -16,7 +19,9 @@ import prepareImage, {
   signatureFromBlob
 } from '../utils/prepareImage'
 import uploadQueue from '../utils/uploadQueue'
+import { analyzeThumbs } from '../utils/colorAi'
 import {
+  PINNED_TAGS,
   findAppMagazine,
   listSeriesInIssue
 } from '../utils/colorCatalog'
@@ -111,6 +116,7 @@ function ColorIssuePage({
   magazineList
 }) {
   const params = useParams()
+  const navigate = useNavigate()
 
   useScrollTopOnOpen()
 
@@ -408,11 +414,94 @@ function ColorIssuePage({
           }
         })
 
+      // AI で作品タグを付け、目次を見分ける（切り落としのやり直しでは呼ばない）
+      let finalItems = items
+      let aiError = ''
+
+      if (!keep) {
+        setBusy('AI が作品を判定中…')
+
+        const featured =
+          listSeriesInIssue(
+            seriesList,
+            getAppMagazine(magazineList, slug),
+            year,
+            folder
+          )
+
+        const result =
+          await analyzeThumbs(
+            prepared.map((item) => item.thumb),
+            [
+              ...PINNED_TAGS,
+              ...(featured.length > 0
+                ? featured
+                : buildSeriesChoices(
+                    seriesList,
+                    magazineList,
+                    slug
+                  ).slice(0, 250))
+            ]
+          )
+
+        aiError = result.error
+
+        if (result.pages) {
+          finalItems =
+            items.map((item, position) => {
+              const page =
+                result.pages[position]
+
+              const series =
+                page?.series || []
+
+              return {
+                ...item,
+                skip: page?.type === 'toc',
+                series,
+                autoSeries: series.length > 0
+              }
+            })
+
+          // 見開きのページは、見開きと同じ作品にする
+          const byId = new Map(
+            finalItems.map((item) => [
+              item.id,
+              item
+            ])
+          )
+
+          finalItems =
+            finalItems.map((item) => {
+              const spread =
+                item.spreadId &&
+                byId.get(item.spreadId)
+
+              return spread &&
+                item.series.length === 0 &&
+                spread.series.length > 0
+                ? {
+                    ...item,
+                    series: spread.series,
+                    autoSeries: true
+                  }
+                : item
+            })
+        }
+      }
+
       pendingFilesRef.current = files
       setPending({
         trim,
-        items
+        items: finalItems
       })
+
+      if (aiError) {
+        setMessage({
+          type: 'error',
+          text: aiError
+        })
+      }
     } catch (error) {
       console.error(error)
       setMessage({
@@ -568,7 +657,19 @@ function ColorIssuePage({
   // 画像を送信待ちの行列に入れて、すぐに次の登録へ進めるようにする。
   // 送信は裏で1件ずつ行い、終わるとこの号の一覧に出る。
   const handleRegister = async () => {
-    const items = pending.items
+    // 目次など「保存しない」にした画像は送らない
+    const items =
+      pending.items.filter(
+        (item) => !item.skip
+      )
+
+    if (items.length === 0) {
+      setMessage({
+        type: 'error',
+        text: '保存する画像がありません。'
+      })
+      return
+    }
 
     setMessage(null)
 
@@ -935,7 +1036,8 @@ function ColorIssuePage({
                   before)
                 ? {
                     ...item,
-                    series
+                    series,
+                    autoSeries: false
                   }
                 : item
           )
@@ -1070,6 +1172,21 @@ function ColorIssuePage({
             </label>
           )}
 
+          {!state.fromCache && !pending && (
+            <button
+              type="button"
+              className="cloud-settings-secondary"
+              disabled={!canChange}
+              onClick={() =>
+                navigate(
+                  `/color/${slug}/import?y=${year}&i=${folder}`
+                )
+              }
+            >
+              何号分もまとめて追加（この号から）
+            </button>
+          )}
+
           {pending && (
             <section className="cloud-settings-section">
               <h2>
@@ -1147,19 +1264,54 @@ function ColorIssuePage({
                         )}
                       </select>
 
+                      {item.skip && (
+                        <button
+                          type="button"
+                          className="cloud-settings-secondary"
+                          disabled={Boolean(busy)}
+                          onClick={() =>
+                            updatePendingItem(
+                              item.id,
+                              { skip: false }
+                            )
+                          }
+                        >
+                          目次なので保存しない（押すと保存する）
+                        </button>
+                      )}
+
                       <button
                         type="button"
-                        className="cloud-settings-secondary"
+                        className={
+                          item.autoSeries
+                            ? 'cloud-settings-secondary color-auto-tag'
+                            : 'cloud-settings-secondary'
+                        }
                         disabled={Boolean(busy)}
-                        onClick={() =>
+                        onClick={() => {
+                          // 自動で付いたタグは、押すと消して選び直す
+                          if (item.autoSeries) {
+                            updatePendingItem(
+                              item.id,
+                              {
+                                series: [],
+                                autoSeries: false
+                              }
+                            )
+                          }
+
                           setTagTarget({
                             type: 'pending',
                             id: item.id
                           })
-                        }
+                        }}
                       >
                         {item.series.length > 0
-                          ? item.series.join('、')
+                          ? `${
+                              item.autoSeries
+                                ? '自動：'
+                                : ''
+                            }${item.series.join('、')}`
                           : '作品タグを付ける'}
                       </button>
 

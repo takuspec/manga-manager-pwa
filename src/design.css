@@ -1369,3 +1369,58 @@ button svg { flex-shrink: 0; vertical-align: middle; }
   outline-offset: 2px;
   border-radius: 12px;
 }
+
+/* AI が自動で付けた作品タグ */
+.color-auto-tag {
+  border-style: dashed;
+  color: #c4b5fd;
+}
+
+/* 目次など保存しない画像 */
+.color-pending-item.skipped .color-thumb {
+  opacity: 0.4;
+}
+
+/* 何号分もまとめて追加 */
+.color-bulk-group select {
+  width: 100%;
+  min-height: 44px;
+  font-size: 16px;
+}
+
+.color-bulk-issue-inputs {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.color-bulk-issue-inputs input {
+  width: 90px;
+  min-height: 44px;
+  font-size: 16px;
+}
+
+.color-bulk-split {
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--text);
+}
+
+.color-bulk-split.on {
+  border-color: var(--accent);
+  background: #162e4c;
+}
+
+.color-bulk-actions {
+  position: sticky;
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 10px);
+  display: grid;
+  grid-template-columns: 1fr 2fr;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.color-bulk-actions button {
+  min-height: 52px;
+  font-size: 17px;
+}

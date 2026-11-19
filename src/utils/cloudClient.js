@@ -229,7 +229,8 @@ export function createCloudClient({
       method = 'GET',
       headers = {},
       body,
-      timeoutMs = RETRY_POLICY.timeoutMs
+      timeoutMs = RETRY_POLICY.timeoutMs,
+      maxAttempts = RETRY_POLICY.maxAttempts
     } = {}
   ) => {
     const config = loadConfig()
@@ -254,7 +255,7 @@ export function createCloudClient({
 
     for (
       let attempt = 1;
-      attempt <= RETRY_POLICY.maxAttempts;
+      attempt <= maxAttempts;
       attempt += 1
     ) {
       checkGuards()
@@ -333,7 +334,7 @@ export function createCloudClient({
       }
 
       if (
-        attempt < RETRY_POLICY.maxAttempts
+        attempt < maxAttempts
       ) {
         await sleep(
           retryDelay(attempt, response)
@@ -344,7 +345,11 @@ export function createCloudClient({
     // 「まだ何も登録されていない」（404）は正常な応答なので、
     // 失敗の回数には数えない。数えると、空の年や号を続けて開いただけで
     // 通信が一時停止してしまう。
-    if (lastError?.status === 404) {
+    // AI の設定がまだ（501）も、通信の不調ではないので数えない
+    if (
+      lastError?.status === 404 ||
+      lastError?.status === 501
+    ) {
       state.consecutiveFailures = 0
     } else {
       recordFailure()
@@ -410,6 +415,39 @@ export function createCloudClient({
         )
 
       return response.blob()
+    },
+
+    // 画像（JPEG を base64 にしたもの）から、表紙・目次と作品を当てる。
+    // 料金がかかるので、やり直しは1回まで。
+    async analyzeImages({
+      candidates,
+      images
+    }) {
+      const body =
+        new Blob(
+          [
+            JSON.stringify({
+              candidates,
+              images: images.map((data) => ({
+                data
+              }))
+            })
+          ],
+          { type: 'application/json' }
+        )
+
+      const response =
+        await request('/ai/analyze', {
+          method: 'POST',
+          headers: {
+            'content-type': 'application/json'
+          },
+          body,
+          timeoutMs: 180000,
+          maxAttempts: 2
+        })
+
+      return response.json()
     },
 
     async deleteFile(key) {

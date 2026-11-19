@@ -12,6 +12,7 @@ R2 バケットは非公開のまま、この Worker だけが読み書きしま
 | `PUT /files/<名前>` | 画像・索引の保存（1ファイル 20MB まで） |
 | `GET /files/<名前>` | 取り出し |
 | `DELETE /files/<名前>` | 削除 |
+| `POST /ai/analyze` | 画像から表紙・目次と作品を判定（Claude API。任意） |
 
 すべての操作に合言葉（`Authorization: Bearer <AUTH_TOKEN>`）が必要です。
 保存できるのは jpg / jpeg / png / webp / json だけです。
@@ -51,6 +52,19 @@ PC のターミナルで、この `worker` フォルダに移動して実行し�
    ```
 
    登録しない場合、保存量と保存分の推定額だけが表示されます。
+
+5. （任意）作品タグの自動判定を使う
+
+   Anthropic の Claude Console（https://platform.claude.com）で API キーを作り、登録します。
+   Console の請求設定で、月の上限額（例: 5ドル）も決めておくと安心です。
+
+   ```
+   npx wrangler secret put ANTHROPIC_API_KEY
+   npx wrangler deploy
+   ```
+
+   使うモデルは `claude-haiku-5-5` です。変えたいときは `AI_MODEL` を登録します。
+   キーはこの Worker の中だけにあり、アプリや GitHub には置きません。
 
 ## 動作確認
 

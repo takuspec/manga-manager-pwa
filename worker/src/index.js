@@ -1,3 +1,5 @@
+import { handleAnalyze } from './ai.js'
+
 // manga-manager 用の画像置き場（Cloudflare Worker + R2）
 //
 // ・R2 バケットは非公開のまま、この Worker だけが読み書きする
@@ -85,7 +87,7 @@ function corsHeaders(request, env) {
     headers['access-control-allow-origin'] =
       origin
     headers['access-control-allow-methods'] =
-      'GET, HEAD, PUT, DELETE, OPTIONS'
+      'GET, HEAD, PUT, POST, DELETE, OPTIONS'
     headers['access-control-allow-headers'] =
       'Authorization, Content-Type, If-None-Match'
     headers['access-control-expose-headers'] =
@@ -806,6 +808,18 @@ export default {
           request,
           env,
           cors
+        )
+      }
+
+      if (
+        url.pathname === '/ai/analyze' &&
+        method === 'POST'
+      ) {
+        return handleAnalyze(
+          request,
+          env,
+          cors,
+          json
         )
       }
 

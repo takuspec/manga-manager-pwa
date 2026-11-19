@@ -20,3 +20,4 @@ BUCKET_NAME = "manga-images"
 #   AUTH_TOKEN     アプリに入力する合言葉（必須）
 #   CF_API_TOKEN   操作回数の取得用 API トークン（任意）
 #   CF_ACCOUNT_ID  Cloudflare のアカウント ID（任意）
+#   ANTHROPIC_API_KEY  作品タグの自動判定に使う Claude API のキー（任意）

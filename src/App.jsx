@@ -27,6 +27,7 @@ import CloudSettingsPage from './pages/CloudSettingsPage'
 import UploadQueueStatus from './components/UploadQueueStatus'
 import ColorIndexPage from './pages/ColorIndexPage'
 import ColorMagazinePage from './pages/ColorMagazinePage'
+import ColorBulkPage from './pages/ColorBulkPage'
 import ColorIssuePage from './pages/ColorIssuePage'
 import ColorSeriesPage from './pages/ColorSeriesPage'
 
@@ -679,6 +680,16 @@ function App() {
             magazineList={magazineList}
             seriesList={seriesList}
             navigate={navigate}
+          />
+        }
+      />
+
+      <Route
+        path="/color/:slug/import"
+        element={
+          <ColorBulkPage
+            seriesList={seriesList}
+            magazineList={magazineList}
           />
         }
       />
