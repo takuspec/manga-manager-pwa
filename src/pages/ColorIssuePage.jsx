@@ -19,12 +19,17 @@ import prepareImage, {
   signatureFromBlob
 } from '../utils/prepareImage'
 import uploadQueue from '../utils/uploadQueue'
-import { analyzeThumbs } from '../utils/colorAi'
+import { analyzePages } from '../utils/colorAi'
 import {
   PINNED_TAGS,
   findAppMagazine,
+  getCatalogRange,
   listSeriesInIssue
 } from '../utils/colorCatalog'
+import {
+  buildIssueSequence,
+  nextIssues
+} from '../utils/colorBulk'
 import {
   deleteImageFiles,
   getCachedRootIndex,
@@ -294,9 +299,102 @@ function ColorIssuePage({
     }
   }, [isValid, slug, year, finishedCount])
 
+  // 号を切り替えた直後は、前の年の一覧が残っていることがあるので年も確かめる
   const images =
-    state.index?.issues[folder]?.images ||
+    (state.index?.year === year &&
+      state.index?.issues[folder]?.images) ||
     []
+
+  // 前後の号（左右のスワイプで移る）
+  const colorMagazine =
+    getCachedRootIndex()?.magazines.find(
+      (magazine) => magazine.slug === slug
+    )
+
+  const navMagazine =
+    findAppMagazine(colorMagazine, magazineList)
+
+  const issueSequence =
+    buildIssueSequence(
+      navMagazine,
+      getCatalogRange(colorMagazine, navMagazine)
+    )
+
+  const prevIssue =
+    isValid
+      ? nextIssues(
+          issueSequence,
+          { year, folder },
+          -1,
+          2
+        )[1]
+      : null
+
+  const nextIssue =
+    isValid
+      ? nextIssues(
+          issueSequence,
+          { year, folder },
+          1,
+          2
+        )[1]
+      : null
+
+  const swipeRef = useRef(null)
+
+  const canSwipe =
+    !pending &&
+    !isEditing &&
+    viewerIndex === null &&
+    !tagTarget
+
+  const goToIssue = (issue) => {
+    if (!issue) {
+      return
+    }
+
+    setMessage(null)
+    setViewerIndex(null)
+    navigate(
+      `/color/${slug}/${issue.year}/${issue.folder}`,
+      { replace: true }
+    )
+    window.scrollTo(0, 0)
+  }
+
+  const handleTouchStart = (event) => {
+    swipeRef.current =
+      canSwipe && event.touches.length === 1
+        ? {
+            x: event.touches[0].clientX,
+            y: event.touches[0].clientY,
+            time: event.timeStamp
+          }
+        : null
+  }
+
+  // 左へはらうと次（新しい）の号、右へはらうと前（古い）の号
+  const handleTouchEnd = (event) => {
+    const startTouch = swipeRef.current
+
+    swipeRef.current = null
+
+    if (!startTouch || !canSwipe) {
+      return
+    }
+
+    const touch = event.changedTouches[0]
+    const dx = touch.clientX - startTouch.x
+    const dy = touch.clientY - startTouch.y
+
+    if (
+      Math.abs(dx) > 70 &&
+      Math.abs(dx) > Math.abs(dy) * 2 &&
+      event.timeStamp - startTouch.time < 700
+    ) {
+      goToIssue(dx < 0 ? nextIssue : prevIssue)
+    }
+  }
 
   // 見開きと、それを1ページずつ撮った画像は、一覧では見開きだけを出す
   // （全画面では3枚とも見られる）。編集中はすべて出す。
@@ -429,35 +527,41 @@ function ColorIssuePage({
             folder
           )
 
+        const candidates = [
+          ...PINNED_TAGS,
+          ...(featured.length > 0
+            ? featured
+            : buildSeriesChoices(
+                seriesList,
+                magazineList,
+                slug
+              ).slice(0, 250))
+        ]
+
         const result =
-          await analyzeThumbs(
-            prepared.map((item) => item.thumb),
-            [
-              ...PINNED_TAGS,
-              ...(featured.length > 0
-                ? featured
-                : buildSeriesChoices(
-                    seriesList,
-                    magazineList,
-                    slug
-                  ).slice(0, 250))
-            ]
-          )
+          await analyzePages({
+            images: prepared,
+            splitByCovers: false,
+            candidatesFor: () => candidates,
+            onProgress: (done, total) =>
+              setBusy(
+                `AI が判定中 ${done} / ${total}`
+              )
+          })
 
         aiError = result.error
 
-        if (result.pages) {
+        {
           finalItems =
             items.map((item, position) => {
-              const page =
-                result.pages[position]
-
               const series =
-                page?.series || []
+                result.series[position] || []
 
               return {
                 ...item,
-                skip: page?.type === 'toc',
+                skip:
+                  result.types[position] ===
+                  'toc',
                 series,
                 autoSeries: series.length > 0
               }
@@ -1057,7 +1161,11 @@ function ColorIssuePage({
   }
 
   return (
-    <div className="app">
+    <div
+      className="app"
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
+    >
       <div className="series-page-header">
         <button
           className="back-button"
@@ -1092,6 +1200,44 @@ function ColorIssuePage({
           <div />
         )}
       </div>
+
+      {isValid && canSwipe && (
+        <div className="color-issue-nav">
+          <button
+            type="button"
+            disabled={!prevIssue}
+            onClick={() => goToIssue(prevIssue)}
+          >
+            ‹{' '}
+            {prevIssue
+              ? `${
+                  prevIssue.year === year
+                    ? ''
+                    : `${prevIssue.year}年 `
+                }${formatIssueFolder(
+                  prevIssue.folder
+                )}`
+              : ''}
+          </button>
+          <span>左右にはらって号を移動</span>
+          <button
+            type="button"
+            disabled={!nextIssue}
+            onClick={() => goToIssue(nextIssue)}
+          >
+            {nextIssue
+              ? `${
+                  nextIssue.year === year
+                    ? ''
+                    : `${nextIssue.year}年 `
+                }${formatIssueFolder(
+                  nextIssue.folder
+                )}`
+              : ''}{' '}
+            ›
+          </button>
+        </div>
+      )}
 
       {!isValid && (
         <div className="color-notice error">

@@ -91,7 +91,7 @@ function corsHeaders(request, env) {
     headers['access-control-allow-headers'] =
       'Authorization, Content-Type, If-None-Match'
     headers['access-control-expose-headers'] =
-      'ETag, Content-Length'
+      'ETag, Content-Length, Retry-After'
     headers['access-control-max-age'] =
       '86400'
   }

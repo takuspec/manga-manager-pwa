@@ -1,12 +1,15 @@
 // 画像から作品を当てる（Anthropic の Claude API を Worker から呼ぶ）。
 // API キーは Worker の秘密（ANTHROPIC_API_KEY）にだけ置き、アプリには渡さない。
+//
+// 取り違えを防ぐため、1回の依頼で判定する画像は1枚だけにする。
+// ・classify: その画像が表紙・目次・カラーページのどれか
+// ・series:   その画像の作品（同じ号の目次の画像を参考に添えられる）
 
 export const AI_LIMITS = {
-  maxImages: 60,
   maxCandidates: 300,
   maxTitleLength: 80,
-  maxBodyBytes: 30 * 1024 * 1024,
-  maxImageBase64Length: 2 * 1024 * 1024
+  maxBodyBytes: 12 * 1024 * 1024,
+  maxImageBase64Length: 5 * 1024 * 1024
 }
 
 const DEFAULT_MODEL = 'claude-haiku-5-5'
@@ -14,43 +17,71 @@ const ANTHROPIC_URL =
   'https://api.anthropic.com/v1/messages'
 const PAGE_TYPES = ['cover', 'toc', 'color', 'other']
 
-const TOOL = {
-  name: 'report_pages',
-  description:
-    '各画像の種類と、描かれている作品を報告する',
+const CLASSIFY_TOOL = {
+  name: 'report_type',
+  description: '画像の種類を報告する',
   input_schema: {
     type: 'object',
     properties: {
-      pages: {
-        type: 'array',
-        items: {
-          type: 'object',
-          properties: {
-            index: {
-              type: 'integer',
-              description: '画像の番号（0から）'
-            },
-            type: {
-              type: 'string',
-              enum: PAGE_TYPES
-            },
-            series: {
-              type: 'array',
-              items: { type: 'string' },
-              description:
-                '候補の中から選んだ作品名。分からなければ空'
-            }
-          },
-          required: ['index', 'type', 'series']
-        }
+      type: {
+        type: 'string',
+        enum: PAGE_TYPES
       }
     },
-    required: ['pages']
+    required: ['type']
   }
+}
+
+const SERIES_TOOL = {
+  name: 'report_series',
+  description: '画像の作品を報告する',
+  input_schema: {
+    type: 'object',
+    properties: {
+      series: {
+        type: 'array',
+        items: { type: 'string' },
+        description:
+          '候補の中から選んだ作品名。分からなければ空'
+      }
+    },
+    required: ['series']
+  }
+}
+
+function isBase64Image(value) {
+  return (
+    typeof value === 'string' &&
+    value.length > 0 &&
+    value.length <=
+      AI_LIMITS.maxImageBase64Length &&
+    /^[A-Za-z0-9+/=]+$/.test(value)
+  )
 }
 
 // 受け取った内容を検査して整える。だめなら null
 export function parseAnalyzeBody(body) {
+  const task = body?.task
+
+  if (
+    task !== 'classify' &&
+    task !== 'series'
+  ) {
+    return null
+  }
+
+  if (!isBase64Image(body?.image)) {
+    return null
+  }
+
+  if (
+    body.toc !== undefined &&
+    body.toc !== null &&
+    !isBase64Image(body.toc)
+  ) {
+    return null
+  }
+
   const candidates =
     Array.isArray(body?.candidates)
       ? body.candidates
@@ -63,89 +94,104 @@ export function parseAnalyzeBody(body) {
           .slice(0, AI_LIMITS.maxCandidates)
       : []
 
-  const images =
-    Array.isArray(body?.images)
-      ? body.images
-      : []
-
-  if (
-    images.length === 0 ||
-    images.length > AI_LIMITS.maxImages
-  ) {
+  if (task === 'series' && candidates.length === 0) {
     return null
   }
 
-  for (const image of images) {
-    if (
-      typeof image?.data !== 'string' ||
-      image.data.length === 0 ||
-      image.data.length >
-        AI_LIMITS.maxImageBase64Length ||
-      !/^[A-Za-z0-9+/=]+$/.test(image.data)
-    ) {
-      return null
-    }
-  }
-
   return {
-    candidates: Array.from(new Set(candidates)),
-    images: images.map((image) => image.data)
+    task,
+    image: body.image,
+    toc:
+      task === 'series' && body.toc
+        ? body.toc
+        : null,
+    candidates: Array.from(new Set(candidates))
   }
 }
 
+const imageBlock = (data) => ({
+  type: 'image',
+  source: {
+    type: 'base64',
+    media_type: 'image/jpeg',
+    data
+  }
+})
+
 export function buildAnthropicRequest(
-  { candidates, images },
+  input,
   model = DEFAULT_MODEL
 ) {
+  if (input.task === 'classify') {
+    return {
+      model,
+      max_tokens: 200,
+      tools: [CLASSIFY_TOOL],
+      tool_choice: {
+        type: 'tool',
+        name: CLASSIFY_TOOL.name
+      },
+      messages: [
+        {
+          role: 'user',
+          content: [
+            imageBlock(input.image),
+            {
+              type: 'text',
+              text: [
+                'この画像は、週刊漫画雑誌のページを撮ったものです。種類を1つ選んで report_type で報告してください。',
+                '- cover: 雑誌そのものの表紙（上部に大きな誌名のロゴと号数・発売日がある）',
+                '- toc: 目次のページ（作品名と作者名が一覧で並ぶ、文字が中心のページ）',
+                '- color: 作品のカラーページ（扉絵・見開きを含む。作品のタイトルロゴがあることが多い）',
+                '- other: 広告など、それ以外',
+                '迷ったら color にしてください。'
+              ].join('\n')
+            }
+          ]
+        }
+      ]
+    }
+  }
+
   const content = [
     {
       type: 'text',
-      text: [
-        '週刊漫画雑誌のページを撮った画像が、撮った順に並んでいます。',
-        '何号分かが続けて入っていることがあり、それぞれの号は表紙から始まります。',
-        '各画像について、次を判断して report_pages で報告してください。',
-        '',
-        'type:',
-        '- cover: 雑誌の表紙（誌名のロゴと号数がある）',
-        '- toc: 目次のページ',
-        '- color: 作品のカラーページ（見開きも含む）',
-        '- other: 広告など、それ以外',
-        '',
-        'series: その画像の作品名を、下の候補から選んでください。',
-        '- 作品名のロゴ、タイトル、キャラクターから判断します。',
-        '- 表紙は、表紙に大きく描かれている作品を選びます。',
-        '- 目次の画像があれば、巻頭カラーやセンターカラーの作品を確かめる参考にしてください。',
-        '- 候補にない読み切り作品なら「読み切り」と答えます。',
-        '- 自信がなければ空にしてください。候補にない名前は書かないでください。',
-        '- 目次と広告は空にします。',
-        '',
-        `候補: ${candidates.join(' / ')}`
-      ].join('\n')
-    }
+      text: '判定する画像:'
+    },
+    imageBlock(input.image)
   ]
 
-  images.forEach((data, index) => {
-    content.push({
-      type: 'text',
-      text: `画像 ${index}`
-    })
-    content.push({
-      type: 'image',
-      source: {
-        type: 'base64',
-        media_type: 'image/jpeg',
-        data
-      }
-    })
+  if (input.toc) {
+    content.push(
+      {
+        type: 'text',
+        text: '参考: 同じ号の目次:'
+      },
+      imageBlock(input.toc)
+    )
+  }
+
+  content.push({
+    type: 'text',
+    text: [
+      '「判定する画像」は週刊漫画雑誌のカラーページ（または表紙）です。描かれている作品を、下の候補から選んで report_series で報告してください。',
+      '- 作品名のロゴ、タイトル、キャラクターから判断します。',
+      '- 表紙なら、表紙に大きく描かれている作品を選びます。',
+      '- 目次があれば、その号に載っている作品や、巻頭カラー・センターカラーの作品を確かめる参考にしてください。',
+      '- 読み切り作品（目次で「読み切り」「特別読切」などとある作品や、候補にない作品）なら「読み切り」と答えます。',
+      '- 自信がなければ空にしてください。候補にない名前は書かないでください。',
+      '',
+      `候補: ${input.candidates.join(' / ')}`
+    ].join('\n')
   })
 
   return {
     model,
-    max_tokens: 8192,
-    tools: [TOOL],
+    max_tokens: 300,
+    tools: [SERIES_TOOL],
     tool_choice: {
       type: 'tool',
-      name: TOOL.name
+      name: SERIES_TOOL.name
     },
     messages: [
       {
@@ -156,65 +202,44 @@ export function buildAnthropicRequest(
   }
 }
 
-// AI の答えを、画像の数と候補に合わせて整える
+// AI の答えを整える
 export function normalizeAnalyzeResult(
   message,
-  imageCount,
-  candidates
+  input
 ) {
-  const allowed = new Set(candidates)
-
   const block =
     (message?.content || []).find(
-      (item) =>
-        item?.type === 'tool_use' &&
-        item.name === TOOL.name
+      (item) => item?.type === 'tool_use'
     )
 
-  const pages =
-    Array.from(
-      { length: imageCount },
-      (_, index) => ({
-        index,
-        type: 'color',
-        series: []
-      })
-    )
+  if (input.task === 'classify') {
+    const type = block?.input?.type
 
-  for (const page of block?.input?.pages || []) {
-    const index = Number(page?.index)
-
-    if (
-      !Number.isInteger(index) ||
-      index < 0 ||
-      index >= imageCount
-    ) {
-      continue
-    }
-
-    pages[index] = {
-      index,
-      type: PAGE_TYPES.includes(page.type)
-        ? page.type
-        : 'color',
-      series: Array.from(
-        new Set(
-          (Array.isArray(page.series)
-            ? page.series
-            : []
-          )
-            .map((title) =>
-              String(title || '').trim()
-            )
-            .filter((title) =>
-              allowed.has(title)
-            )
-        )
-      ).slice(0, 4)
+    return {
+      type: PAGE_TYPES.includes(type)
+        ? type
+        : 'color'
     }
   }
 
-  return pages
+  const allowed = new Set(input.candidates)
+
+  return {
+    series: Array.from(
+      new Set(
+        (Array.isArray(block?.input?.series)
+          ? block.input.series
+          : []
+        )
+          .map((title) =>
+            String(title || '').trim()
+          )
+          .filter((title) =>
+            allowed.has(title)
+          )
+      )
+    ).slice(0, 4)
+  }
 }
 
 export async function handleAnalyze(
@@ -288,13 +313,21 @@ export async function handleAnalyze(
       await response.text().catch(() => '')
     )
 
+    const retryAfter =
+      response.headers.get('retry-after')
+
     return json(
       {
         error: 'ai_failed',
         status: response.status
       },
       response.status === 429 ? 429 : 502,
-      cors
+      retryAfter
+        ? {
+            ...cors,
+            'retry-after': retryAfter
+          }
+        : cors
     )
   }
 
@@ -302,10 +335,9 @@ export async function handleAnalyze(
 
   return json(
     {
-      pages: normalizeAnalyzeResult(
+      ...normalizeAnalyzeResult(
         message,
-        input.images.length,
-        input.candidates
+        input
       ),
       usage: {
         inputTokens:

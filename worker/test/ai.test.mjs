@@ -29,83 +29,94 @@ const makeRequest = (body) => {
   })
 }
 
-test('入力の検査: 画像がない・多すぎる・形が違うものは断る', () => {
-  assert.equal(parseAnalyzeBody({ images: [] }), null)
+test('入力の検査: 種類・画像・候補の形が違うものは断る', () => {
+  assert.equal(parseAnalyzeBody({ task: 'x', image: 'QUJD' }), null)
+  assert.equal(parseAnalyzeBody({ task: 'classify', image: 'not base64!' }), null)
+  assert.equal(parseAnalyzeBody({ task: 'series', image: 'QUJD', candidates: [] }), null)
   assert.equal(
-    parseAnalyzeBody({
-      images: Array.from({ length: 61 }, () => ({ data: 'QUJD' }))
-    }),
-    null
-  )
-  assert.equal(
-    parseAnalyzeBody({ images: [{ data: 'not base64!' }] }),
+    parseAnalyzeBody({ task: 'series', image: 'QUJD', toc: '!!', candidates: ['A'] }),
     null
   )
 
   assert.deepEqual(
     parseAnalyzeBody({
-      candidates: [' ONE PIECE ', 'ONE PIECE', ''],
-      images: [{ data: 'QUJD' }]
+      task: 'series',
+      image: 'QUJD',
+      toc: 'REVG',
+      candidates: [' ONE PIECE ', 'ONE PIECE', '']
     }),
     {
-      candidates: ['ONE PIECE'],
-      images: ['QUJD']
+      task: 'series',
+      image: 'QUJD',
+      toc: 'REVG',
+      candidates: ['ONE PIECE']
     }
   )
 })
 
-test('依頼の形: 候補と番号付きの画像を送り、報告の道具を必ず使わせる', () => {
-  const request =
+test('依頼の形: 1回に1枚。作品の判定には目次を添えられる', () => {
+  const classify =
     buildAnthropicRequest({
-      candidates: ['ONE PIECE', '呪術廻戦'],
-      images: ['QUJD', 'REVG']
+      task: 'classify',
+      image: 'QUJD',
+      toc: null,
+      candidates: []
     })
 
-  assert.equal(request.tool_choice.name, 'report_pages')
-  assert.match(request.messages[0].content[0].text, /ONE PIECE \/ 呪術廻戦/)
+  assert.equal(classify.tool_choice.name, 'report_type')
+  assert.equal(
+    classify.messages[0].content.filter((item) => item.type === 'image').length,
+    1
+  )
+
+  const series =
+    buildAnthropicRequest({
+      task: 'series',
+      image: 'QUJD',
+      toc: 'REVG',
+      candidates: ['ONE PIECE', '呪術廻戦']
+    })
 
   const images =
-    request.messages[0].content.filter(
-      (item) => item.type === 'image'
-    )
+    series.messages[0].content.filter((item) => item.type === 'image')
 
-  assert.equal(images.length, 2)
-  assert.equal(images[1].source.data, 'REVG')
+  assert.equal(series.tool_choice.name, 'report_series')
+  assert.deepEqual(
+    images.map((item) => item.source.data),
+    ['QUJD', 'REVG']
+  )
+  assert.match(
+    series.messages[0].content.at(-1).text,
+    /ONE PIECE \/ 呪術廻戦/
+  )
 })
 
-test('答えの整理: 候補にない作品名や範囲外の番号は捨てる', () => {
-  const pages =
-    normalizeAnalyzeResult(
-      {
-        content: [
-          {
-            type: 'tool_use',
-            name: 'report_pages',
-            input: {
-              pages: [
-                { index: 0, type: 'cover', series: ['ONE PIECE', '知らない作品'] },
-                { index: 5, type: 'cover', series: [] },
-                { index: 1, type: 'weird', series: ['読み切り'] }
-              ]
-            }
-          }
-        ]
-      },
-      3,
-      ['ONE PIECE', '読み切り']
-    )
+test('答えの整理: 知らない種類はカラー、候補にない作品名は捨てる', () => {
+  const answer = (input) => ({
+    content: [{ type: 'tool_use', name: 'x', input }]
+  })
 
-  assert.deepEqual(pages, [
-    { index: 0, type: 'cover', series: ['ONE PIECE'] },
-    { index: 1, type: 'color', series: ['読み切り'] },
-    { index: 2, type: 'color', series: [] }
-  ])
+  assert.deepEqual(
+    normalizeAnalyzeResult(answer({ type: 'weird' }), { task: 'classify' }),
+    { type: 'color' }
+  )
+  assert.deepEqual(
+    normalizeAnalyzeResult(answer({ type: 'toc' }), { task: 'classify' }),
+    { type: 'toc' }
+  )
+  assert.deepEqual(
+    normalizeAnalyzeResult(
+      answer({ series: ['ONE PIECE', '知らない作品', '読み切り'] }),
+      { task: 'series', candidates: ['ONE PIECE', '読み切り'] }
+    ),
+    { series: ['ONE PIECE', '読み切り'] }
+  )
 })
 
 test('API キーがなければ、設定がまだだと返す', async () => {
   const response =
     await handleAnalyze(
-      makeRequest({ images: [{ data: 'QUJD' }] }),
+      makeRequest({ task: 'classify', image: 'QUJD' }),
       {},
       {},
       json
@@ -120,8 +131,9 @@ test('Claude API を呼んで、整えた答えを返す', async () => {
   const response =
     await handleAnalyze(
       makeRequest({
-        candidates: ['ONE PIECE'],
-        images: [{ data: 'QUJD' }]
+        task: 'series',
+        image: 'QUJD',
+        candidates: ['ONE PIECE']
       }),
       { ANTHROPIC_API_KEY: 'sk-test' },
       {},
@@ -134,12 +146,8 @@ test('Claude API を呼んで、整えた答えを返す', async () => {
             content: [
               {
                 type: 'tool_use',
-                name: 'report_pages',
-                input: {
-                  pages: [
-                    { index: 0, type: 'cover', series: ['ONE PIECE'] }
-                  ]
-                }
+                name: 'report_series',
+                input: { series: ['ONE PIECE'] }
               }
             ],
             usage: { input_tokens: 1200, output_tokens: 40 }
@@ -154,23 +162,37 @@ test('Claude API を呼んで、整えた答えを返す', async () => {
 
   const body = await response.json()
 
-  assert.deepEqual(body.pages, [
-    { index: 0, type: 'cover', series: ['ONE PIECE'] }
-  ])
+  assert.deepEqual(body.series, ['ONE PIECE'])
   assert.equal(body.usage.inputTokens, 1200)
 })
 
-test('Claude API が失敗したら 502 を返す', async () => {
+test('Claude API が混んでいたら 429、失敗なら 502 を返す', async () => {
   console.error = () => {}
 
-  const response =
+  const busy =
     await handleAnalyze(
-      makeRequest({ images: [{ data: 'QUJD' }] }),
+      makeRequest({ task: 'classify', image: 'QUJD' }),
+      { ANTHROPIC_API_KEY: 'sk-test' },
+      {},
+      json,
+      async () =>
+        new Response('{}', {
+          status: 429,
+          headers: { 'retry-after': '5' }
+        })
+    )
+
+  assert.equal(busy.status, 429)
+  assert.equal(busy.headers.get('retry-after'), '5')
+
+  const failed =
+    await handleAnalyze(
+      makeRequest({ task: 'classify', image: 'QUJD' }),
       { ANTHROPIC_API_KEY: 'sk-test' },
       {},
       json,
       async () => json({ error: 'x' }, 500)
     )
 
-  assert.equal(response.status, 502)
+  assert.equal(failed.status, 502)
 })

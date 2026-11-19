@@ -417,20 +417,22 @@ export function createCloudClient({
       return response.blob()
     },
 
-    // 画像（JPEG を base64 にしたもの）から、表紙・目次と作品を当てる。
-    // 料金がかかるので、やり直しは1回まで。
-    async analyzeImages({
-      candidates,
-      images
+    // 画像1枚（JPEG を base64 にしたもの）について、AI に判定してもらう。
+    // task: 'classify'（表紙・目次・カラー）または 'series'（作品）
+    async analyzeImage({
+      task,
+      image,
+      toc = null,
+      candidates = []
     }) {
       const body =
         new Blob(
           [
             JSON.stringify({
-              candidates,
-              images: images.map((data) => ({
-                data
-              }))
+              task,
+              image,
+              toc,
+              candidates
             })
           ],
           { type: 'application/json' }
@@ -443,8 +445,7 @@ export function createCloudClient({
             'content-type': 'application/json'
           },
           body,
-          timeoutMs: 180000,
-          maxAttempts: 2
+          timeoutMs: 60000
         })
 
       return response.json()

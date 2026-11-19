@@ -1,7 +1,17 @@
-// 画像から作品を当てる（Worker 経由で Claude API を呼ぶ）
+// 画像から表紙・目次と作品を当てる（Worker 経由で Claude API を呼ぶ）。
+// 取り違えを防ぐため、画像は1枚ずつ判定する。
+//  1. 小さくした画像で、表紙・目次・カラーのどれかを判定
+//  2. 号ごとに目次を添えて、カラーページ（と表紙）の作品を判定
 import cloudClient from './cloudClient.js'
+import {
+  groupByStarts,
+  splitStarts
+} from './colorBulk.js'
 
 export const AI_MAX_IMAGES = 60
+
+// 同時に送る数（API の回数制限に引っかからない程度）
+const CONCURRENCY = 3
 
 export async function blobToBase64(blob) {
   const bytes =
@@ -24,52 +34,273 @@ export async function blobToBase64(blob) {
   return btoa(binary)
 }
 
-// thumbs: サムネイルの Blob の配列。
-// 返り値: { pages: [{ type, series }] | null, error: '' }
-export async function analyzeThumbs(
-  thumbs,
-  candidates
-) {
-  if (
-    thumbs.length === 0 ||
-    thumbs.length > AI_MAX_IMAGES
-  ) {
+// 長い辺を maxEdge 以下にした JPEG
+async function resizeJpeg(blob, maxEdge, quality) {
+  const bitmap = await createImageBitmap(blob)
+
+  try {
+    const scale =
+      Math.min(
+        1,
+        maxEdge /
+          Math.max(bitmap.width, bitmap.height)
+      )
+
+    const canvas =
+      document.createElement('canvas')
+
+    canvas.width =
+      Math.max(1, Math.round(bitmap.width * scale))
+    canvas.height =
+      Math.max(1, Math.round(bitmap.height * scale))
+
+    canvas
+      .getContext('2d')
+      .drawImage(
+        bitmap,
+        0,
+        0,
+        canvas.width,
+        canvas.height
+      )
+
+    return await new Promise((resolve, reject) => {
+      canvas.toBlob(
+        (result) =>
+          result
+            ? resolve(result)
+            : reject(new Error('encode failed')),
+        'image/jpeg',
+        quality
+      )
+    })
+  } finally {
+    bitmap.close?.()
+  }
+}
+
+async function runPool(count, worker) {
+  let next = 0
+
+  const lanes =
+    Array.from(
+      { length: Math.min(CONCURRENCY, count) },
+      async () => {
+        while (next < count) {
+          const index = next
+
+          next += 1
+          await worker(index)
+        }
+      }
+    )
+
+  await Promise.all(lanes)
+}
+
+class NotConfigured extends Error {}
+
+async function ask(payload) {
+  try {
+    return await cloudClient.analyzeImage(payload)
+  } catch (error) {
+    if (error?.status === 501) {
+      throw new NotConfigured()
+    }
+
+    throw error
+  }
+}
+
+// images: [{ thumb, full }]
+// splitByCovers: 表紙ごとに号を区切るか（何号分もまとめて追加のとき）
+// candidatesFor(groupIndex): その号の作品の候補
+// 返り値: { types, starts, series, error }
+export async function analyzePages({
+  images,
+  splitByCovers,
+  candidatesFor,
+  onProgress = () => {}
+}) {
+  const count = images.length
+  const types = images.map(() => 'color')
+  const series = images.map(() => [])
+  let failures = 0
+  let done = 0
+
+  const fallbackStarts =
+    images.map((_, index) => index === 0)
+
+  if (count === 0 || count > AI_MAX_IMAGES) {
     return {
-      pages: null,
+      types,
+      starts: fallbackStarts,
+      series,
       error: ''
     }
   }
 
   try {
-    const images = []
+    // 1. 種類（表紙・目次・カラー）
+    await runPool(count, async (index) => {
+      try {
+        const small =
+          await resizeJpeg(
+            images[index].thumb,
+            512,
+            0.8
+          )
 
-    for (const thumb of thumbs) {
-      images.push(await blobToBase64(thumb))
+        const result =
+          await ask({
+            task: 'classify',
+            image: await blobToBase64(small)
+          })
+
+        types[index] = result?.type || 'color'
+      } catch (error) {
+        if (error instanceof NotConfigured) {
+          throw error
+        }
+
+        console.error(error)
+        failures += 1
+      } finally {
+        done += 1
+        onProgress(done, count * 2)
+      }
+    })
+
+    const starts =
+      splitByCovers
+        ? splitStarts(
+            types.map((type) => ({ type }))
+          )
+        : fallbackStarts
+
+    const groups = groupByStarts(starts)
+
+    // 目次は各号の最後（次の表紙の直前）にある。
+    // それ以外の位置で目次と判定されたものは、カラーページとして扱う
+    for (const group of groups) {
+      group.forEach((index, position) => {
+        if (
+          types[index] === 'toc' &&
+          position !== group.length - 1
+        ) {
+          types[index] = 'color'
+        }
+      })
     }
 
-    const result =
-      await cloudClient.analyzeImages({
-        candidates,
-        images
-      })
+    // 2. 号ごとに目次を添えて、作品を判定
+    const jobs = []
+
+    for (const [
+      groupIndex,
+      group
+    ] of groups.entries()) {
+      const candidates =
+        candidatesFor(groupIndex)
+
+      const tocIndex =
+        group.find(
+          (index) => types[index] === 'toc'
+        )
+
+      let toc = null
+
+      if (tocIndex !== undefined) {
+        try {
+          toc =
+            await blobToBase64(
+              await resizeJpeg(
+                images[tocIndex].full,
+                1400,
+                0.85
+              )
+            )
+        } catch (error) {
+          console.error(error)
+        }
+      }
+
+      for (const index of group) {
+        if (
+          types[index] === 'toc' ||
+          types[index] === 'other'
+        ) {
+          continue
+        }
+
+        jobs.push({ index, toc, candidates })
+      }
+    }
+
+    done = count
+    onProgress(done, count + jobs.length)
+
+    await runPool(jobs.length, async (position) => {
+      const job = jobs[position]
+
+      try {
+        const result =
+          await ask({
+            task: 'series',
+            image:
+              await blobToBase64(
+                images[job.index].thumb
+              ),
+            toc: job.toc,
+            candidates: job.candidates
+          })
+
+        series[job.index] =
+          Array.isArray(result?.series)
+            ? result.series
+            : []
+      } catch (error) {
+        if (error instanceof NotConfigured) {
+          throw error
+        }
+
+        console.error(error)
+        failures += 1
+      } finally {
+        done += 1
+        onProgress(done, count + jobs.length)
+      }
+    })
 
     return {
-      pages: Array.isArray(result?.pages)
-        ? result.pages
-        : null,
-      error: ''
+      types,
+      starts,
+      series,
+      error:
+        failures > 0
+          ? `${failures} 件は AI で判定できませんでした。手動で直してください。`
+          : ''
     }
   } catch (error) {
+    if (error instanceof NotConfigured) {
+      return {
+        types,
+        starts: fallbackStarts,
+        series,
+        error:
+          'AI の設定がまだのため、作品タグと号の区切りは自動で付けていません。'
+      }
+    }
+
     console.error(error)
 
     return {
-      pages: null,
-      error:
-        error?.status === 501
-          ? 'AI の設定がまだのため、作品タグと号の区切りは自動で付けていません。'
-          : `作品タグを自動で付けられませんでした（${
-              error?.message || '不明なエラー'
-            }）。手動で付けてください。`
+      types,
+      starts: fallbackStarts,
+      series,
+      error: `AI で判定できませんでした（${
+        error?.message || '不明なエラー'
+      }）。手動で付けてください。`
     }
   }
 }

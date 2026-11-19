@@ -1424,3 +1424,38 @@ button svg { flex-shrink: 0; vertical-align: middle; }
   min-height: 52px;
   font-size: 17px;
 }
+
+/* 号の画面: 前後の号へ */
+.color-issue-nav {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 10px;
+}
+
+.color-issue-nav span {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.color-issue-nav button {
+  min-height: 40px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--text);
+  font-size: 14px;
+}
+
+.color-issue-nav button:first-child {
+  justify-self: start;
+}
+
+.color-issue-nav button:last-child {
+  justify-self: end;
+}
+
+.color-issue-nav button:disabled {
+  visibility: hidden;
+}

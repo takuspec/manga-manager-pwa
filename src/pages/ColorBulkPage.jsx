@@ -12,15 +12,15 @@ import prepareImage from '../utils/prepareImage'
 import uploadQueue from '../utils/uploadQueue'
 import {
   AI_MAX_IMAGES,
-  analyzeThumbs
+  analyzePages
 } from '../utils/colorAi'
 import {
   buildIssueSequence,
   collectCandidates,
   groupByStarts,
-  nextIssues,
-  splitStarts
+  nextIssues
 } from '../utils/colorBulk'
+import { PINNED_TAGS } from '../utils/colorCatalog'
 import {
   findAppMagazine,
   getCatalogRange,
@@ -293,33 +293,52 @@ function ColorBulkPage({
 
       const pages = matchSpreadPages(analyzed)
 
-      // 1号に4枚ほどとして、候補を集める号の数を見積もる
+      // 号ごとの作品の候補（号の番号が1つずれても当たるよう、前後の号も含める）
       const guessIssues =
         nextIssues(
           sequence,
           start,
           direction,
-          Math.ceil(files.length / 3) + 1
+          files.length + 2
         )
 
-      setBusy('AI が表紙・目次と作品を判定中…')
+      const fallbackChoices =
+        buildSeriesChoices(
+          seriesList,
+          appMagazine?.id
+        ).slice(0, 250)
 
-      const result =
-        await analyzeThumbs(
-          prepared.map((item) => item.thumb),
+      const candidatesFor = (groupIndex) => {
+        const titles =
           collectCandidates(
             seriesList,
             appMagazine,
-            guessIssues
+            [
+              guessIssues[groupIndex - 1],
+              guessIssues[groupIndex],
+              guessIssues[groupIndex + 1]
+            ]
           )
-        )
 
-      const starts =
-        result.pages
-          ? splitStarts(result.pages)
-          : prepared.map(
-              (_, index) => index === 0
+        return titles.length > PINNED_TAGS.length
+          ? titles
+          : [...PINNED_TAGS, ...fallbackChoices]
+      }
+
+      setBusy('AI が判定中…')
+
+      const result =
+        await analyzePages({
+          images: prepared,
+          splitByCovers: true,
+          candidatesFor,
+          onProgress: (done, total) =>
+            setBusy(
+              `AI が判定中 ${done} / ${total}`
             )
+        })
+
+      const starts = result.starts
 
       releasePreviews()
 
@@ -330,10 +349,11 @@ function ColorBulkPage({
 
           previewUrlsRef.current.push(previewUrl)
 
-          const page =
-            result.pages?.[position]
+          const type =
+            result.types[position] || 'color'
 
-          const type = page?.type || 'color'
+          const series =
+            result.series[position] || []
 
           return {
             id: analyzed[position].id,
@@ -348,9 +368,8 @@ function ColorBulkPage({
             issue: null,
             kind: 'center',
             kindTouched: false,
-            series: page?.series || [],
-            autoSeries:
-              (page?.series || []).length > 0
+            series,
+            autoSeries: series.length > 0
           }
         })
 
@@ -593,7 +612,7 @@ function ColorBulkPage({
         <div className="color-page">
           <section className="cloud-settings-section">
             <p className="cloud-settings-note">
-              何号分かの画像を、撮った順のまま一度に選んでください（{AI_MAX_IMAGES}枚まで）。AI が表紙ごとに号を区切り、作品タグを付けます。目次の画像は判定の参考にして、保存はしません。
+              何号分かの画像を、撮った順のまま一度に選んでください（{AI_MAX_IMAGES}枚まで）。AI が表紙ごとに号を区切り、作品タグを付けます。目次の画像（各号の最後）は判定の参考にして、保存はしません。1枚ずつ判定するので、少し時間がかかります。
             </p>
 
             <label className="color-toolbar-field">
