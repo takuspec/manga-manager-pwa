@@ -1,0 +1,43 @@
+import { useState, useEffect, useRef } from 'react'
+import { Theme } from '@astryxdesign/core/theme'
+import { neutralTheme } from '@astryxdesign/theme-neutral/built'
+import { Button } from '@astryxdesign/core/Button'
+import { TextInput } from '@astryxdesign/core/TextInput'
+import { Badge } from '@astryxdesign/core/Badge'
+import ImageView from '../components/ImageView'
+import { getUnreadIssueCount, getEstimatedLatestIssueInfo } from '../utils/issueUtils'
+
+function read(key) { try { return JSON.parse(localStorage.getItem(key) || '[]') } catch { return [] } }
+const realMagazines = read('magazines-v3')
+const demoMagazines = [{id:1,name:'週刊少年誌',frequency:'weekly',baseIssue:49,baseIssueYear:2026,baseDate:'2026-11-09',releaseDay:1},{id:2,name:'月刊コミック',frequency:'monthly',baseIssue:11,baseIssueYear:2026,baseDate:'2026-11-01',releaseDate:1}]
+const demoSeries = ['蒼天のストライカー','リナと雪の航路','放課後のエトランゼ','星降る図書館','青の残響'].map((title,i)=>({id:i+1,title,author:i%2?'水野 みなと':'九条 隼人',magazineId:i===4?2:1,status:i===3?'completed':'ongoing',issueYear:2026,issue:44+i,startIssueYear:2024,startIssue:12,excludeFromMagazineUnread:i===1}))
+const magazines=realMagazines.length?realMagazines:demoMagazines
+const initialSeries=realMagazines.length?read('series-v2'):demoSeries
+const nav=[['reading','読む','book'],['library','雑誌','stack'],['archive','完結','archive'],['timeline','年表','time'],['settings','設定','settings']]
+function Icon({name}) {const paths={book:'M3 4h6l3 2 3-2h6v15h-6l-3 2-3-2H3ZM12 6v15',stack:'m12 3 9 5-9 5-9-5 9-5ZM3 12l9 5 9-5M3 16l9 5 9-5',archive:'M4 5h16v15H4ZM2 2h20v4H2ZM9 10h6',time:'M12 3a9 9 0 1 0 9 9 9 9 0 0 0-9-9ZM12 7v5l3 2',settings:'M4 7h16M4 17h16M8 4v6M16 14v6'};return <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={paths[name]}/></svg>}
+export default function Preview(){
+ const [page,setPage]=useState('reading'),[query,setQuery]=useState(''),[onlyUnread,setOnlyUnread]=useState(true),[scope,setScope]=useState(null),[selected,setSelected]=useState(null),[series,setSeries]=useState(initialSeries),[mode,setMode]=useState('dark')
+ const dialogRef=useRef(null)
+ useEffect(()=>{const dialog=dialogRef.current;if(selected===null||!dialog)return;dialog.showModal();return()=>dialog.close()},[selected])
+ const getMagazine=s=>magazines.find(m=>m.id===s.magazineId)
+ const unread=s=>{const m=getMagazine(s);return m?getUnreadIssueCount(s,m,getEstimatedLatestIssueInfo(m)):0}
+ const ongoing=series.filter(s=>s.status==='ongoing')
+ const total=ongoing.reduce((n,s)=>n+(s.excludeFromMagazineUnread?0:unread(s)),0)
+ const title=page==='reading'?(scope?magazines.find(m=>m.id===scope)?.name:'次の一話へ。'):({library:'雑誌をひらく。',archive:'物語の、その先。',timeline:'連載の軌跡。',settings:'自分に合う読書環境。'})[page]
+ const visible=series.filter(s=>(!scope||s.magazineId===scope)&&(page==='archive'?s.status==='completed':true)&&(!onlyUnread||page!=='reading'||unread(s)>0)&&`${s.title} ${s.author||''}`.includes(query))
+ const go=p=>{setPage(p);setScope(null);setQuery('');setSelected(null)}
+ const cover=s=><div className="p-cover"><ImageView imageId={s.imageId} fallbackImage={s.image}/></div>
+ return <Theme theme={neutralTheme} mode={mode}><div className="product-shell">
+ <aside className="rail"><div className="brand"><span className="brand-mark">読</span><div>読む棚<small>YOUR READING SPACE</small></div></div><nav aria-label="メインナビゲーション">{nav.map(([id,label,icon])=><button className={page===id?'current':''} key={id} onClick={()=>go(id)} aria-current={page===id?'page':undefined}><Icon name={icon}/>{label}{id==='reading'&&<span>{ongoing.length}</span>}</button>)}</nav><div className="rail-note"><span className="live-dot"/> ASTRYX EXPLORATION<br/><small>いつもの本棚を、もっと心地よく。</small></div></aside>
+ <div className="workspace"><header className="topbar"><span>ライブラリ <span className="crumb">／ {nav.find(n=>n[0]===page)[1]}</span></span><div className="top-actions"><Badge label="デザイン試作"/><Button label={mode==='dark'?'ライト表示':'ダーク表示'} variant="secondary" clickAction={()=>setMode(mode==='dark'?'light':'dark')}/></div></header>
+ <main><div className="hero"><div><p className="eyebrow">A LITTLE READING, EVERY DAY</p><h1>{title}</h1><p className="intro">{page==='reading'?'読みかけの物語が、あなたを待っています。':'大切な作品を、いつでも見つけられる場所に。'}</p></div><div className="hero-stamp"><Icon name="book"/><span>読む時間を、<br/>もっと大切に。</span></div></div>
+ <div className="preview-notice">比較用プレビュー · {realMagazines.length?'端末の登録データを表示中':'サンプルデータを表示中'} · 操作は本番データに保存されません</div>
+ {page==='reading'&&<section className="summary"><div><span>これから読む</span><strong>{total}<small>号分</small></strong><p>集計対象の連載作品から</p></div><div><span>読書中の作品</span><strong>{ongoing.length}<small>作品</small></strong><p>あなたのペースで、一話ずつ</p></div><div className="summary-last"><span>マイライブラリ</span><strong>{magazines.length}<small>誌</small></strong><p>好きな物語が集まる場所</p></div></section>}
+ {['reading','archive'].includes(page)&&<><section className="section-heading"><div><p className="eyebrow">{page==='archive'?'FINISHED STORIES':'CONTINUE READING'}</p><h2>{page==='archive'?'完結した作品':'続きを読む'}</h2></div><span>{visible.length}作品</span></section><div className="toolbar"><TextInput label="作品・作者を検索" isLabelHidden placeholder="作品名・作者名で探す" value={query} onChange={setQuery}/>{page==='reading'&&<Button label={onlyUnread?'未読ありだけ ✓':'すべての作品'} variant={onlyUnread?'primary':'secondary'} clickAction={()=>setOnlyUnread(!onlyUnread)}/>}</div><div className="reading-list">{visible.map(s=><article className="reading-card" key={s.id}>{cover(s)}<div className="work-copy"><div className="work-meta">{getMagazine(s)?.name}<span>•</span>{s.author||'作者未設定'}</div><button className="work-title" onClick={()=>setSelected(s.id)}>{s.title}</button><div className="work-progress">読了 {s.issueYear}年 {s.issue}号</div><div className="work-tags"><Badge label={s.status==='completed'?'完結':s.status==='paused'?'休載中':`未読 ${unread(s)}`}/>{s.excludeFromMagazineUnread&&<span className="excluded">集計対象外</span>}</div></div><div className="row-action"><Button label="作品詳細" variant="secondary" clickAction={()=>setSelected(s.id)}/></div></article>)}</div>{!visible.length&&<div className="empty"><h3>今の条件に合う作品はありません</h3><p>検索語や表示条件を変えてみてください。</p><Button label="条件を解除" clickAction={()=>{setQuery('');setOnlyUnread(false)}}/></div>}</>}
+ {page==='library'&&<><section className="section-heading"><h2>マイライブラリ</h2><span>{magazines.length}誌を登録</span></section><div className="magazine-catalog">{magazines.map(m=><button className="magazine-tile" key={m.id} onClick={()=>{setScope(m.id);setOnlyUnread(false);setPage('reading')}}><div className="p-mag-cover"><ImageView imageId={m.imageId} fallbackImage={m.image}/></div><div><span className="eyebrow">MAGAZINE</span><h2>{m.name}</h2><p>{series.filter(s=>s.magazineId===m.id).length}作品を登録</p><span className="open-label">作品をひらく →</span></div></button>)}</div></>}
+ {page==='timeline'&&<><section className="section-heading"><h2>はじまりの記録</h2><span>登録した連載開始号</span></section><div className="chronicle">{[...series].sort((a,b)=>b.startIssueYear-a.startIssueYear||b.startIssue-a.startIssue).map(s=><button key={s.id} onClick={()=>setSelected(s.id)}><span className="time-marker"/><span className="time-date">{s.startIssueYear}年<br/>{s.startIssue}号</span><div><Badge label="連載開始"/><h3>{s.title}</h3><p>{getMagazine(s)?.name}</p></div></button>)}</div></>}
+ {page==='settings'&&<div className="settings-panel"><h2>見た目とデータ</h2><p>読むことに集中できる、自分だけの本棚。</p><div><span>カラーモード</span><Button label={mode==='dark'?'ダーク':'ライト'} clickAction={()=>setMode(mode==='dark'?'light':'dark')}/></div><div><span>保存データ・バックアップ</span><Badge label="既存形式を維持"/></div><div><span>表紙のサイズ</span><span>作品 92×124 / 雑誌 72×100</span></div><p className="muted">この試作は閲覧と操作感の比較用です。編集・インポート・合併号設定は既存画面で行います。</p><Button label="現在のアプリを開く" href="./" variant="secondary"/></div>}
+ <footer className="page-foot"><span>読む棚</span><span>Built with Astryx by Meta · Concept preview</span></footer></main></div>
+ {selected!==null&&<dialog ref={dialogRef} className="detail-backdrop" aria-label="作品詳細" onCancel={()=>setSelected(null)} onClick={()=>setSelected(null)}><section className="detail" onClick={e=>e.stopPropagation()}><Button label="閉じる" variant="secondary" clickAction={()=>setSelected(null)}/>{(()=>{const s=series.find(s=>s.id===selected);return <><p className="eyebrow">YOUR NEXT CHAPTER</p>{cover(s)}<h2>{s.title}</h2><p>{s.author} · {getMagazine(s)?.name}</p><div className="detail-stat">読了 {s.issueYear}年 {s.issue}号</div><p>試作内だけで読了号を進めて、操作感を確認できます。</p><Button label="1号分を読了にする（試作）" clickAction={()=>setSeries(prev=>prev.map(x=>x.id===s.id?{...x,issue:Number(x.issue)+1}:x))}/></>})()}</section></dialog>}
+ </div></Theme>
+}
