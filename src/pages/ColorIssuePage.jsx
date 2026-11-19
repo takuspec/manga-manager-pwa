@@ -376,7 +376,8 @@ function ColorIssuePage({
         : null
   }
 
-  // 左へはらうと次（新しい）の号、右へはらうと前（古い）の号
+  // 右へはらうと次（新しい）の号、左へはらうと前（古い）の号
+  // （右から左へめくる漫画と同じ向き）
   const handleTouchEnd = (event) => {
     const startTouch = swipeRef.current
 
@@ -395,7 +396,7 @@ function ColorIssuePage({
       Math.abs(dx) > Math.abs(dy) * 2 &&
       event.timeStamp - startTouch.time < 700
     ) {
-      goToIssue(dx < 0 ? nextIssue : prevIssue)
+      goToIssue(dx > 0 ? nextIssue : prevIssue)
     }
   }
 
@@ -1229,26 +1230,10 @@ function ColorIssuePage({
         <div className="color-issue-nav">
           <button
             type="button"
-            disabled={!prevIssue}
-            onClick={() => goToIssue(prevIssue)}
-          >
-            ‹{' '}
-            {prevIssue
-              ? `${
-                  prevIssue.year === year
-                    ? ''
-                    : `${prevIssue.year}年 `
-                }${formatIssueFolder(
-                  prevIssue.folder
-                )}`
-              : ''}
-          </button>
-          <span>左右にはらって号を移動</span>
-          <button
-            type="button"
             disabled={!nextIssue}
             onClick={() => goToIssue(nextIssue)}
           >
+            ‹{' '}
             {nextIssue
               ? `${
                   nextIssue.year === year
@@ -1256,6 +1241,22 @@ function ColorIssuePage({
                     : `${nextIssue.year}年 `
                 }${formatIssueFolder(
                   nextIssue.folder
+                )}`
+              : ''}
+          </button>
+          <span>左右にはらって号を移動</span>
+          <button
+            type="button"
+            disabled={!prevIssue}
+            onClick={() => goToIssue(prevIssue)}
+          >
+            {prevIssue
+              ? `${
+                  prevIssue.year === year
+                    ? ''
+                    : `${prevIssue.year}年 `
+                }${formatIssueFolder(
+                  prevIssue.folder
                 )}`
               : ''}{' '}
             ›

@@ -166,7 +166,7 @@ function ColorBulkPage({
   const [rootReady, setRootReady] =
     useState(Boolean(getCachedRootIndex()))
   const [direction, setDirection] =
-    useState(-1)
+    useState(1)
   const [items, setItems] = useState([])
   const [busy, setBusy] = useState('')
   const [message, setMessage] =
@@ -635,11 +635,11 @@ function ColorBulkPage({
                   )
                 }
               >
-                <option value={-1}>
-                  古い号へ進む（50号 → 49号…）
-                </option>
                 <option value={1}>
                   新しい号へ進む（50号 → 51号…）
+                </option>
+                <option value={-1}>
+                  古い号へ進む（50号 → 49号…）
                 </option>
               </select>
             </label>

@@ -1193,8 +1193,8 @@ export function listSeriesImages(
 
 // 作品ごとの画像の並べ順と、種類での絞り込み
 export const SERIES_IMAGE_SORTS = [
-  { id: 'new', label: '新しい順' },
-  { id: 'old', label: '古い順' }
+  { id: 'old', label: '古い順' },
+  { id: 'new', label: '新しい順' }
 ]
 
 export const SERIES_IMAGE_KINDS = [

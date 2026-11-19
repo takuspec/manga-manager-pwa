@@ -50,7 +50,7 @@ function ColorSeriesPage({
         item.id === searchParams.get('s')
     )
       ? searchParams.get('s')
-      : 'new'
+      : 'old'
 
   const kind =
     SERIES_IMAGE_KINDS.some(
@@ -64,7 +64,7 @@ function ColorSeriesPage({
     const merged = { s: sort, k: kind, ...next }
     const query = {}
 
-    if (merged.s !== 'new') {
+    if (merged.s !== 'old') {
       query.s = merged.s
     }
 
