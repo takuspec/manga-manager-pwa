@@ -18,7 +18,10 @@ import {
   buildIssueSequence,
   collectCandidates,
   groupByStarts,
-  nextIssues
+  nextIssues,
+  refineKindsBySeries,
+  sortByShotOrder,
+  unifySpreadSeries
 } from '../utils/colorBulk'
 import { PINNED_TAGS } from '../utils/colorCatalog'
 import {
@@ -104,6 +107,20 @@ function applyKinds(items) {
         }))
       )
 
+    // 表紙の作品と同じなら巻頭カラー、違えばセンターカラー
+    const refined =
+      refineKindsBySeries(
+        kept.map((index, position) => ({
+          id: next[index].id,
+          spreadId: next[index].spreadId,
+          series: next[index].series,
+          kind:
+            next[index].type === 'cover'
+              ? 'cover'
+              : kinds[position]
+        }))
+      )
+
     kept.forEach((index, position) => {
       const item = next[index]
 
@@ -111,10 +128,7 @@ function applyKinds(items) {
         return
       }
 
-      item.kind =
-        item.type === 'cover'
-          ? 'cover'
-          : kinds[position]
+      item.kind = refined[position]
     })
   }
 
@@ -245,8 +259,9 @@ function ColorBulkPage({
   })
 
   const handleFiles = async (event) => {
+    // 撮った順に並べ直す（選んだ順が撮った順と違うことがあるため）
     const files =
-      Array.from(event.target.files || [])
+      sortByShotOrder(event.target.files || [])
 
     event.target.value = ''
 
@@ -373,25 +388,14 @@ function ColorBulkPage({
           }
         })
 
-      // 見開きのページは、見開きと同じ作品にする
-      const byId = new Map(
-        next.map((item) => [item.id, item])
-      )
+      // 見開きと各ページは、同じ作品にそろえる
+      const unified = unifySpreadSeries(next)
 
-      next = next.map((item) => {
-        const spread =
-          item.spreadId && byId.get(item.spreadId)
-
-        return spread &&
-          item.series.length === 0 &&
-          spread.series.length > 0
-          ? {
-              ...item,
-              series: spread.series,
-              autoSeries: true
-            }
-          : item
-      })
+      next = next.map((item, position) => ({
+        ...item,
+        series: unified[position],
+        autoSeries: unified[position].length > 0
+      }))
 
       setItems(applyKinds(next))
 
@@ -470,16 +474,18 @@ function ColorBulkPage({
     setTagTarget(null)
 
     setItems((current) =>
-      current.map((item) =>
-        item.id === target.id ||
-        (item.spreadId === target.id &&
-          item.series.length === 0)
-          ? {
-              ...item,
-              series,
-              autoSeries: false
-            }
-          : item
+      applyKinds(
+        current.map((item) =>
+          item.id === target.id ||
+          (item.spreadId === target.id &&
+            item.series.length === 0)
+            ? {
+                ...item,
+                series,
+                autoSeries: false
+              }
+            : item
+        )
       )
     )
   }

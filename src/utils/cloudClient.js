@@ -345,10 +345,12 @@ export function createCloudClient({
     // 「まだ何も登録されていない」（404）は正常な応答なので、
     // 失敗の回数には数えない。数えると、空の年や号を続けて開いただけで
     // 通信が一時停止してしまう。
-    // AI の設定がまだ（501）も、通信の不調ではないので数えない
+    // AI の設定がまだ（501）・使えない（402: クレジット切れなど）も、
+    // 通信の不調ではないので数えない（一時停止にしない）
     if (
       lastError?.status === 404 ||
-      lastError?.status === 501
+      lastError?.status === 501 ||
+      lastError?.status === 402
     ) {
       state.consecutiveFailures = 0
     } else {

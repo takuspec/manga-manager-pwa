@@ -98,14 +98,27 @@ async function runPool(count, worker) {
   await Promise.all(lanes)
 }
 
+// AI が使えない（設定がまだ・クレジット切れなど）。残りの判定もやめる
 class NotConfigured extends Error {}
 
+const AI_STOP_MESSAGES = {
+  501: 'AI の設定がまだのため、作品タグと号の区切りは自動で付けていません。',
+  402: 'AI が使えませんでした（クレジット切れか、API キーが無効です）。作品タグは手動で付けてください。'
+}
+
+let stopped = null
+
 async function ask(payload) {
+  if (stopped) {
+    throw new NotConfigured(stopped)
+  }
+
   try {
     return await cloudClient.analyzeImage(payload)
   } catch (error) {
-    if (error?.status === 501) {
-      throw new NotConfigured()
+    if (AI_STOP_MESSAGES[error?.status]) {
+      stopped = AI_STOP_MESSAGES[error.status]
+      throw new NotConfigured(stopped)
     }
 
     throw error
@@ -128,6 +141,9 @@ export async function analyzePages({
   let failures = 0
   let done = 0
 
+  // 前回止まっていても、新しく選んだときはもう一度試す
+  stopped = null
+
   const fallbackStarts =
     images.map((_, index) => index === 0)
 
@@ -139,6 +155,9 @@ export async function analyzePages({
       error: ''
     }
   }
+
+  // 途中で止まっても、そこまでの判定（号の区切り）は使う
+  let starts = fallbackStarts
 
   try {
     // 1. 種類（表紙・目次・カラー）
@@ -171,7 +190,7 @@ export async function analyzePages({
       }
     })
 
-    const starts =
+    starts =
       splitByCovers
         ? splitStarts(
             types.map((type) => ({ type }))
@@ -181,12 +200,22 @@ export async function analyzePages({
     const groups = groupByStarts(starts)
 
     // 目次は各号の最後（次の表紙の直前）にある。
+    // 何号分もまとめて追加するときは、各号の最後を目次とする。
     // それ以外の位置で目次と判定されたものは、カラーページとして扱う
     for (const group of groups) {
       group.forEach((index, position) => {
+        const isLast =
+          position === group.length - 1
+
         if (
+          splitByCovers &&
+          isLast &&
+          group.length > 1
+        ) {
+          types[index] = 'toc'
+        } else if (
           types[index] === 'toc' &&
-          position !== group.length - 1
+          !isLast
         ) {
           types[index] = 'color'
         }
@@ -285,10 +314,9 @@ export async function analyzePages({
     if (error instanceof NotConfigured) {
       return {
         types,
-        starts: fallbackStarts,
+        starts,
         series,
-        error:
-          'AI の設定がまだのため、作品タグと号の区切りは自動で付けていません。'
+        error: error.message
       }
     }
 
@@ -296,7 +324,7 @@ export async function analyzePages({
 
     return {
       types,
-      starts: fallbackStarts,
+      starts,
       series,
       error: `AI で判定できませんでした（${
         error?.message || '不明なエラー'

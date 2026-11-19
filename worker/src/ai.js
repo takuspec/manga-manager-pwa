@@ -313,6 +313,23 @@ export async function handleAnalyze(
       await response.text().catch(() => '')
     )
 
+    // クレジット切れ・キーの無効など（やり直しても同じ）は 402 で返す。
+    // アプリはこれを見て AI の判定をやめ、手動のタグ付けに切り替える
+    if (
+      response.status >= 400 &&
+      response.status < 500 &&
+      response.status !== 429
+    ) {
+      return json(
+        {
+          error: 'ai_unavailable',
+          status: response.status
+        },
+        402,
+        cors
+      )
+    }
+
     const retryAfter =
       response.headers.get('retry-after')
 

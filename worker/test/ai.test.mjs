@@ -196,3 +196,20 @@ test('Claude API が混んでいたら 429、失敗なら 502 を返す', async 
 
   assert.equal(failed.status, 502)
 })
+
+test('クレジット切れなど（Claude API の 400・401）は 402 を返す', async () => {
+  console.error = () => {}
+
+  for (const status of [400, 401, 403]) {
+    const response =
+      await handleAnalyze(
+        makeRequest({ task: 'classify', image: 'QUJD' }),
+        { ANTHROPIC_API_KEY: 'sk-test' },
+        {},
+        json,
+        async () => json({ error: { type: 'invalid_request_error' } }, status)
+      )
+
+    assert.equal(response.status, 402)
+  }
+})

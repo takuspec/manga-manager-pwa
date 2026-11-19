@@ -28,7 +28,10 @@ import {
 } from '../utils/colorCatalog'
 import {
   buildIssueSequence,
-  nextIssues
+  nextIssues,
+  refineKindsBySeries,
+  sortByShotOrder,
+  unifySpreadSeries
 } from '../utils/colorBulk'
 import {
   deleteImageFiles,
@@ -567,30 +570,50 @@ function ColorIssuePage({
               }
             })
 
-          // 見開きのページは、見開きと同じ作品にする
-          const byId = new Map(
-            finalItems.map((item) => [
+          // 見開きと各ページは、同じ作品にそろえる
+          const unified =
+            unifySpreadSeries(finalItems)
+
+          finalItems =
+            finalItems.map((item, position) => ({
+              ...item,
+              series: unified[position],
+              autoSeries:
+                unified[position].length > 0
+            }))
+
+          // 表紙の作品と同じなら巻頭カラー、違えばセンターカラー
+          const kept =
+            finalItems.filter(
+              (item) => !item.skip
+            )
+
+          const refined =
+            refineKindsBySeries(
+              kept.map((item) => ({
+                id: item.id,
+                spreadId: item.spreadId,
+                series: item.series,
+                kind: item.kind
+              }))
+            )
+
+          const kindById = new Map(
+            kept.map((item, position) => [
               item.id,
-              item
+              refined[position]
             ])
           )
 
           finalItems =
-            finalItems.map((item) => {
-              const spread =
-                item.spreadId &&
-                byId.get(item.spreadId)
-
-              return spread &&
-                item.series.length === 0 &&
-                spread.series.length > 0
+            finalItems.map((item) =>
+              kindById.has(item.id)
                 ? {
                     ...item,
-                    series: spread.series,
-                    autoSeries: true
+                    kind: kindById.get(item.id)
                   }
                 : item
-            })
+            )
         }
       }
 
@@ -618,8 +641,9 @@ function ColorIssuePage({
   }
 
   const handleFiles = (event) => {
+    // 撮った順に並べ直す（選んだ順が撮った順と違うことがあるため）
     const files =
-      Array.from(event.target.files || [])
+      sortByShotOrder(event.target.files || [])
 
     event.target.value = ''
 
