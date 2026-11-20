@@ -346,6 +346,7 @@ function ColorBulkPage({
         await analyzePages({
           images: prepared,
           splitByCovers: true,
+          magazine: colorMagazine?.name || '',
           candidatesFor,
           onProgress: (done, total) =>
             setBusy(

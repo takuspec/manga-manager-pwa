@@ -423,6 +423,7 @@ export function createCloudClient({
     // task: 'classify'（表紙・目次・カラー）または 'series'（作品）
     async analyzeImage({
       task,
+      magazine = '',
       image,
       toc = null,
       candidates = []
@@ -432,6 +433,7 @@ export function createCloudClient({
           [
             JSON.stringify({
               task,
+              magazine,
               image,
               toc,
               candidates

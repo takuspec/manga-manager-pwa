@@ -100,6 +100,9 @@ export function parseAnalyzeBody(body) {
 
   return {
     task,
+    magazine: String(body?.magazine || '')
+      .trim()
+      .slice(0, 40),
     image: body.image,
     toc:
       task === 'series' && body.toc
@@ -139,12 +142,16 @@ export function buildAnthropicRequest(
             {
               type: 'text',
               text: [
-                'この画像は、週刊漫画雑誌のページを撮ったものです。種類を1つ選んで report_type で報告してください。',
-                '- cover: 雑誌そのものの表紙（上部に大きな誌名のロゴと号数・発売日がある）',
-                '- toc: 目次のページ（作品名と作者名が一覧で並ぶ、文字が中心のページ）',
-                '- color: 作品のカラーページ（扉絵・見開きを含む。作品のタイトルロゴがあることが多い）',
+                `この画像は、週刊漫画雑誌${
+                  input.magazine
+                    ? `「${input.magazine}」`
+                    : ''
+                }のページを撮ったものです。種類を1つ選んで report_type で報告してください。`,
+                '- cover: 雑誌そのものの表紙。上部に誌名の大きなロゴ、号数・発売日・価格があり、裏にバーコードがあることも。作品のタイトルロゴだけのページは cover ではありません',
+                '- toc: 目次のページ。連載作品の名前・作者名・掲載ページが、表のように一覧で並ぶ文字中心のページ。1つの作品の扉絵（作品タイトル、あらすじ、作者名、アオリ文がある）は toc ではありません',
+                '- color: 作品のカラーページ。扉絵、巻頭カラー、センターカラー、見開きを含みます',
                 '- other: 広告など、それ以外',
-                '迷ったら color にしてください。'
+                '迷ったら color にしてください。cover と toc は、はっきり分かるときだけ選んでください。'
               ].join('\n')
             }
           ]

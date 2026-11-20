@@ -47,6 +47,7 @@ test('入力の検査: 種類・画像・候補の形が違うものは断る', 
     }),
     {
       task: 'series',
+      magazine: '',
       image: 'QUJD',
       toc: 'REVG',
       candidates: ['ONE PIECE']

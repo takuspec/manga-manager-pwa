@@ -8,7 +8,7 @@ import {
   splitStarts
 } from './colorBulk.js'
 
-export const AI_MAX_IMAGES = 60
+export const AI_MAX_IMAGES = 120
 
 // 同時に送る数（API の回数制限に引っかからない程度）
 const CONCURRENCY = 3
@@ -132,6 +132,7 @@ async function ask(payload) {
 export async function analyzePages({
   images,
   splitByCovers,
+  magazine = '',
   candidatesFor,
   onProgress = () => {}
 }) {
@@ -163,17 +164,14 @@ export async function analyzePages({
     // 1. 種類（表紙・目次・カラー）
     await runPool(count, async (index) => {
       try {
-        const small =
-          await resizeJpeg(
-            images[index].thumb,
-            512,
-            0.8
-          )
-
         const result =
           await ask({
             task: 'classify',
-            image: await blobToBase64(small)
+            magazine,
+            image:
+              await blobToBase64(
+                images[index].thumb
+              )
           })
 
         types[index] = result?.type || 'color'
@@ -189,6 +187,29 @@ export async function analyzePages({
         onProgress(done, count * 2)
       }
     })
+
+    // 表紙として認めるのは、縦長で、直前が目次の画像だけ
+    // （各号は「表紙 → カラー → 目次」の順で、目次の次は次の号の表紙）。
+    // それ以外で表紙と判定されたものはカラーページとして扱う
+    if (splitByCovers) {
+      types.forEach((type, index) => {
+        if (type !== 'cover') {
+          return
+        }
+
+        const portrait =
+          images[index].width <
+          images[index].height
+
+        const afterToc =
+          index === 0 ||
+          types[index - 1] === 'toc'
+
+        if (!portrait || !afterToc) {
+          types[index] = 'color'
+        }
+      })
+    }
 
     starts =
       splitByCovers

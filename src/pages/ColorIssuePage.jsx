@@ -175,6 +175,7 @@ function ColorIssuePage({
   const dragRef = useRef(null)
 
   const pendingFilesRef = useRef([])
+  const batchRef = useRef(0)
   const previewUrlsRef = useRef([])
 
   const releasePreviews = () => {
@@ -460,7 +461,8 @@ function ColorIssuePage({
       }
 
       // 見開きと、その各ページ（撮った場合）を画像の中身で対応づける
-      const stamp = Date.now()
+      batchRef.current += 1
+      const stamp = `b${batchRef.current}`
 
       const analyzed =
         prepared.map((item, position) => ({
@@ -546,6 +548,7 @@ function ColorIssuePage({
           await analyzePages({
             images: prepared,
             splitByCovers: false,
+            magazine: colorMagazine?.name || '',
             candidatesFor: () => candidates,
             onProgress: (done, total) =>
               setBusy(
