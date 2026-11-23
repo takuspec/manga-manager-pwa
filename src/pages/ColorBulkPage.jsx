@@ -36,6 +36,7 @@ import {
 import {
   IMAGE_KINDS,
   formatIssueFolder,
+  getKindLabel,
   isSpreadSize,
   issueFolder,
   matchSpreadPages,
@@ -368,6 +369,16 @@ function ColorBulkPage({
           const type =
             result.types[position] || 'color'
 
+          // 目次は文字を読めるよう、元の大きさの画像で大きく出す
+          const fullUrl =
+            type === 'toc'
+              ? URL.createObjectURL(item.full)
+              : ''
+
+          if (fullUrl) {
+            previewUrlsRef.current.push(fullUrl)
+          }
+
           const series =
             result.series[position] || []
 
@@ -378,6 +389,7 @@ function ColorBulkPage({
               null,
             prepared: item,
             previewUrl,
+            fullUrl,
             type,
             skip: type === 'toc',
             start: starts[position],
@@ -795,17 +807,35 @@ function ColorBulkPage({
                     return (
                       <div
                         key={item.id}
-                        className={
+                        className={[
+                          'color-pending-item',
+                          item.fullUrl ? 'toc' : '',
                           item.skip
-                            ? 'color-pending-item skipped'
-                            : 'color-pending-item'
-                        }
+                            ? 'skipped'
+                            : `kind-${item.kind}`
+                        ]
+                          .filter(Boolean)
+                          .join(' ')}
                       >
                         <div className="color-thumb">
                           <img
-                            src={item.previewUrl}
+                            src={
+                              item.fullUrl ||
+                              item.previewUrl
+                            }
                             alt=""
                           />
+                          <span
+                            className={`color-pending-badge ${
+                              item.skip
+                                ? 'kind-toc'
+                                : `kind-${item.kind}`
+                            }`}
+                          >
+                            {item.skip
+                              ? '目次'
+                              : getKindLabel(item.kind)}
+                          </span>
                         </div>
 
                         <div className="color-pending-fields">

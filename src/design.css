@@ -1459,3 +1459,60 @@ button svg { flex-shrink: 0; vertical-align: middle; }
 .color-issue-nav button:disabled {
   visibility: hidden;
 }
+
+/* まとめて追加: 種類ごとの色分けと、目次の大きな表示 */
+.color-pending-item .color-thumb {
+  position: relative;
+}
+
+.color-pending-item.kind-cover,
+.color-pending-item.kind-opening,
+.color-pending-item.kind-center,
+.color-pending-item.kind-combined,
+.color-pending-item.kind-other {
+  padding: 8px;
+  border-left: 6px solid var(--kind-color);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--kind-color) 12%, transparent);
+}
+
+.kind-cover { --kind-color: #f59e0b; }
+.kind-opening { --kind-color: #ef4444; }
+.kind-center { --kind-color: #3b82f6; }
+.kind-combined { --kind-color: #a855f7; }
+.kind-other { --kind-color: #9ca3af; }
+.kind-toc { --kind-color: #10b981; }
+
+.color-pending-badge {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: var(--kind-color);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.color-pending-item.toc {
+  grid-template-columns: minmax(0, 1fr);
+  padding: 8px;
+  border: 2px solid #10b981;
+  border-radius: 12px;
+}
+
+.color-pending-item.toc .color-thumb {
+  aspect-ratio: auto;
+}
+
+.color-pending-item.toc .color-thumb img {
+  width: 100%;
+  height: auto;
+  object-fit: contain;
+}
+
+.color-pending-item.toc.skipped .color-thumb {
+  opacity: 1;
+}
