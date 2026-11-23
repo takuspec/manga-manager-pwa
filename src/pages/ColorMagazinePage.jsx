@@ -435,7 +435,7 @@ function ColorMagazinePage({
   }
 
   return (
-    <div className="app">
+    <div className="app color-wide">
       <div className="color-sticky-header">
         <div className="series-page-header">
           <button

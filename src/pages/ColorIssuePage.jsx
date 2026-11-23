@@ -1190,7 +1190,7 @@ function ColorIssuePage({
 
   return (
     <div
-      className="app"
+      className="app color-wide"
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
     >

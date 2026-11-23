@@ -171,7 +171,7 @@ function ColorIndexPage({
   }
 
   return (
-    <div className="app">
+    <div className="app color-wide">
       <div className="page-title-row">
         <div className="title">
           カラーページ

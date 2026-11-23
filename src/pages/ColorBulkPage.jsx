@@ -605,7 +605,7 @@ function ColorBulkPage({
       : null
 
   return (
-    <div className="app">
+    <div className="app color-wide">
       <div className="series-page-header">
         <button
           className="back-button"
