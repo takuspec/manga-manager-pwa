@@ -24,7 +24,8 @@ import {
 
 // 号の一覧を始める号。雑誌ごとに決める（未設定の雑誌は一覧を作らない）。
 const CATALOG_STARTS = {
-  jump: { year: 2018, issue: 41 }
+  jump: { year: 2018, issue: 41 },
+  magazine: { year: 2018, issue: 35 }
 }
 
 export function getCatalogStart(colorMagazine) {
