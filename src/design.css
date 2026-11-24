@@ -1562,3 +1562,154 @@ button svg { flex-shrink: 0; vertical-align: middle; }
     margin-left: auto;
   }
 }
+
+/* 作品ごとのカラー年表 */
+.color-timeline {
+  display: grid;
+  gap: 10px;
+}
+
+.color-timeline-years {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 8px;
+}
+
+.color-timeline-years strong {
+  font-size: 22px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.color-timeline-years button {
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--text);
+  font-size: 14px;
+}
+
+.color-timeline-years button:first-child { justify-self: start; }
+.color-timeline-years button:last-child { justify-self: end; }
+.color-timeline-years button:disabled { visibility: hidden; }
+
+.color-timeline-summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.color-timeline-summary div {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 4px;
+  padding: 8px 4px;
+  border-radius: 9px;
+  border-bottom: 3px solid var(--kind-color);
+  background: var(--surface);
+}
+
+.color-timeline-summary span {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.color-timeline-summary strong {
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.color-timeline-summary .kind-other { --kind-color: #64748b; }
+
+.color-timeline-grid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 5px;
+}
+
+.color-timeline-cell {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: stretch;
+  min-height: 0;
+  aspect-ratio: 7 / 8;
+  padding: 4px 5px;
+  border: 1px solid #22324a;
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+  font-weight: 400;
+  text-align: left;
+}
+
+.color-timeline-cell.has-center { background: #16264a; }
+.color-timeline-cell.has-opening { background: #3a1720; }
+.color-timeline-cell.has-cover { background: #3a2410; }
+.color-timeline-cell.start { border: 2px solid #34d399; }
+.color-timeline-cell.outside {
+  border: 1px dashed var(--line);
+  background: transparent;
+  color: #56657c;
+}
+
+.color-timeline-number {
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.1;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.color-timeline-marks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+}
+
+.color-timeline-marks .mark {
+  display: inline-grid;
+  place-items: center;
+  width: 17px;
+  height: 17px;
+  border-radius: 4px;
+  background: var(--kind-color);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.color-timeline-marks .flag {
+  font-size: 9px;
+  font-weight: 800;
+}
+.color-timeline-marks .flag.start { color: #6ee7b7; }
+.color-timeline-marks .flag.end { color: #e2e8f0; }
+
+.color-timeline-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  margin: 0;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+@media (min-width: 700px) {
+  .app.color-wide .color-timeline-grid {
+    grid-template-columns: repeat(13, minmax(0, 1fr));
+  }
+
+  .app.color-wide .color-timeline-summary {
+    max-width: 560px;
+  }
+}
+
+/* 年表の印は白い文字が読める濃さにする */
+.color-timeline .kind-cover { --kind-color: #b45309; }
+.color-timeline .kind-opening { --kind-color: #dc2626; }
+.color-timeline .kind-center { --kind-color: #2563eb; }
+.color-timeline .kind-other { --kind-color: #64748b; }

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import {
+  useNavigate,
   useParams,
   useSearchParams
 } from 'react-router-dom'
@@ -9,6 +10,7 @@ import {
   useScrollTopOnOpen
 } from '../hooks/useScrollHeader'
 import ColorViewer from '../components/ColorViewer'
+import ColorSeriesTimeline from '../components/ColorSeriesTimeline'
 import {
   loadRootIndex,
   loadYearIndexes
@@ -60,9 +62,34 @@ function ColorSeriesPage({
       ? searchParams.get('k')
       : 'all'
 
+  // 表示: 画像の一覧（list）か、年表（timeline）
+  const view =
+    searchParams.get('v') === 'timeline'
+      ? 'timeline'
+      : 'list'
+
+  const timelineYear =
+    Number(searchParams.get('y')) || null
+
+  const navigate = useNavigate()
+
   const updateParams = (next) => {
-    const merged = { s: sort, k: kind, ...next }
+    const merged = {
+      s: sort,
+      k: kind,
+      v: view,
+      y: timelineYear,
+      ...next
+    }
     const query = {}
+
+    if (merged.v === 'timeline') {
+      query.v = 'timeline'
+    }
+
+    if (merged.y) {
+      query.y = String(merged.y)
+    }
 
     if (merged.s !== 'old') {
       query.s = merged.s
@@ -96,6 +123,10 @@ function ColorSeriesPage({
     })
 
   const [viewerIndex, setViewerIndex] =
+    useState(null)
+
+  // 年表のマスから開いた、その号の画像
+  const [timelineImages, setTimelineImages] =
     useState(null)
 
   // ビューアーには見開きのページも含めて渡し、一覧では見開きだけを出す
@@ -270,6 +301,59 @@ function ColorSeriesPage({
             </div>
           )}
 
+          <div
+            className="color-view-switch"
+            role="group"
+            aria-label="表示の切り替え"
+          >
+            <button
+              type="button"
+              className={
+                view === 'list' ? 'active' : ''
+              }
+              aria-pressed={view === 'list'}
+              onClick={() =>
+                updateParams({ v: 'list' })
+              }
+            >
+              画像の一覧
+            </button>
+            <button
+              type="button"
+              className={
+                view === 'timeline' ? 'active' : ''
+              }
+              aria-pressed={view === 'timeline'}
+              onClick={() =>
+                updateParams({ v: 'timeline' })
+              }
+            >
+              年表
+            </button>
+          </div>
+
+          {view === 'timeline' && (
+            <ColorSeriesTimeline
+              appMagazine={appMagazine}
+              seriesList={seriesList}
+              series={series}
+              title={title}
+              images={state.images}
+              initialYear={timelineYear}
+              onYearChange={(year) =>
+                updateParams({ y: year })
+              }
+              onOpenImages={setTimelineImages}
+              onOpenIssue={(year, folder) =>
+                navigate(
+                  `/color/${slug}/${year}/${folder}`
+                )
+              }
+            />
+          )}
+
+          {view === 'list' && (
+          <>
           {state.images.length > 1 && (
             <div className="color-series-toolbar">
               <label className="color-toolbar-field">
@@ -380,7 +464,18 @@ function ColorSeriesPage({
               )
             )}
           </div>
+          </>
+          )}
         </div>
+      )}
+
+      {timelineImages && (
+        <ColorViewer
+          slug={slug}
+          images={timelineImages}
+          initialIndex={0}
+          onClose={() => setTimelineImages(null)}
+        />
       )}
 
       {viewerIndex !== null &&
