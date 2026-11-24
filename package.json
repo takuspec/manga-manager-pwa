@@ -2,7 +2,7 @@
   "homepage": "https://takuspec.github.io/manga-manager-pwa/",
   "name": "manga-manager-new",
   "private": true,
-  "version": "1.7.1",
+  "version": "1.7.2",
   "type": "module",
   "scripts": {
     "dev": "vite",

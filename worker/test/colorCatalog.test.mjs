@@ -133,14 +133,14 @@ test('アプリ側の雑誌を名前で探す', () => {
   )
 })
 
-test('号の一覧はジャンプ（2018年41号から）とマガジン（2018年35号から）', () => {
+test('号の一覧はジャンプだけ、2018年41号から', () => {
   assert.deepEqual(
     getCatalogStart({ slug: 'jump', name: 'ジャンプ' }),
     { year: 2018, issue: 41 }
   )
-  assert.deepEqual(
+  assert.equal(
     getCatalogStart({ slug: 'magazine', name: 'マガジン' }),
-    { year: 2018, issue: 35 }
+    null
   )
   assert.equal(
     getCatalogStart({ slug: 'sunday', name: 'サンデー' }),
