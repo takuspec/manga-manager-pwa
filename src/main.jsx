@@ -12,6 +12,16 @@ if (navigator.storage?.persist) {
     .catch(() => {})
 }
 
+// 以前あったカラーページ機能が端末に残したデータ（画像のキャッシュ、
+// 送信待ちの画像、クラウドの接続先）を消す。漫画の記録には触れない。
+try {
+  indexedDB?.deleteDatabase('manga-cloud-cache')
+  indexedDB?.deleteDatabase('manga-upload-queue')
+  localStorage.removeItem('cloud-config-v1')
+} catch {
+  // 使えない環境では何もしない
+}
+
 createRoot(
   document.getElementById('root')
 ).render(

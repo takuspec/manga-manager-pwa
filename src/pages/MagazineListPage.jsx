@@ -234,9 +234,6 @@ function MagazineListPage({
         onWeeklySettings={() =>
           navigate('/weekly-settings')
         }
-        onCloudSettings={() =>
-          navigate('/cloud-settings')
-        }
       />
       </div>
 

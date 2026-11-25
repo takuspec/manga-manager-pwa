@@ -23,13 +23,6 @@ import WeeklyIssueRulesPage from './pages/WeeklyIssueRulesPage'
 import WeeklyMergedIssuesPage from './pages/WeeklyMergedIssuesPage'
 import TimelineIndexPage from './pages/TimelineIndexPage'
 import TimelinePage from './pages/TimelinePage'
-import CloudSettingsPage from './pages/CloudSettingsPage'
-import UploadQueueStatus from './components/UploadQueueStatus'
-import ColorIndexPage from './pages/ColorIndexPage'
-import ColorMagazinePage from './pages/ColorMagazinePage'
-import ColorBulkPage from './pages/ColorBulkPage'
-import ColorIssuePage from './pages/ColorIssuePage'
-import ColorSeriesPage from './pages/ColorSeriesPage'
 
 import {
   getEstimatedLatestIssue,
@@ -651,70 +644,6 @@ function App() {
       />
 
       <Route
-        path="/color"
-        element={
-          <ColorIndexPage
-            magazineList={magazineList}
-            onBackupData={backupData}
-            onImportData={importData}
-            navigate={navigate}
-          />
-        }
-      />
-
-      <Route
-        path="/color/:slug"
-        element={
-          <ColorMagazinePage
-            magazineList={magazineList}
-            seriesList={seriesList}
-            navigate={navigate}
-          />
-        }
-      />
-
-      <Route
-        path="/color/:slug/series/:title"
-        element={
-          <ColorSeriesPage
-            magazineList={magazineList}
-            seriesList={seriesList}
-            navigate={navigate}
-          />
-        }
-      />
-
-      <Route
-        path="/color/:slug/import"
-        element={
-          <ColorBulkPage
-            seriesList={seriesList}
-            magazineList={magazineList}
-          />
-        }
-      />
-
-      <Route
-        path="/color/:slug/:year/:issue"
-        element={
-          <ColorIssuePage
-            seriesList={seriesList}
-            magazineList={magazineList}
-            navigate={navigate}
-          />
-        }
-      />
-
-      <Route
-        path="/cloud-settings"
-        element={
-          <CloudSettingsPage
-            navigate={navigate}
-          />
-        }
-      />
-
-      <Route
         path="/weekly-settings"
         element={
           <WeeklySettingsPage
@@ -902,7 +831,6 @@ function App() {
 
     </Routes>
 
-    <UploadQueueStatus />
     </>
   )
 }

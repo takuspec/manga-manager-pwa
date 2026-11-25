@@ -3,7 +3,6 @@ import AppIcon from './AppIcon'
 const items = [
   { path: '/', label: '雑誌', icon: 'book' },
   { path: '/completed', label: '完結', icon: 'stack' },
-  { path: '/color', label: 'カラーページ', icon: 'image' },
   { path: '/timeline', label: '年表', icon: 'calendar' }
 ]
 

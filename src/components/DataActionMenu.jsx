@@ -25,8 +25,7 @@ function DataActionMenu({
   onBackupData,
   onImportData,
   onWeeklySettings,
-  onAddMagazine,
-  onCloudSettings
+  onAddMagazine
 }) {
   const [isOpen, setIsOpen] =
     useState(false)
@@ -128,18 +127,6 @@ function DataActionMenu({
               }}
             >
               週刊誌情報
-            </button>
-          )}
-
-          {onCloudSettings && (
-            <button
-              type="button"
-              onClick={() => {
-                onCloudSettings()
-                setIsOpen(false)
-              }}
-            >
-              クラウド設定
             </button>
           )}
 
